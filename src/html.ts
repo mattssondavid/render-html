@@ -11,28 +11,17 @@
  * * Perhaps just use lit-html?
  */
 
-// type Part = {
-//     node: Node;
-//     type: 'text' | 'attr' | 'event';
-//     name?: string;
-//     value?: string;
-//     substitutionMarker?: string;
-// };
 type Part =
     | { type: 'text'; node: Text }
     | {
           type: 'attr';
           node: Element;
           attr: string;
-          value: string;
-          substitutionMarker: string;
       }
     | {
           type: 'event';
           node: Element;
           event: string;
-          value: string;
-          substitutionMarker: string;
           lastHandler?: EventListener;
       };
 
@@ -48,6 +37,78 @@ type TemplateCacheEntry = {
     partMeta: PartMeta[];
 };
 
+/**
+ * Determine current node's position in the node Tree as viewed from the
+ * first parent's (e.g. an template DocumentFragment) children
+ *
+ * @returns {number[]} The path
+ */
+const getChildPathToAncesterNode = (
+    node: Node,
+    ancesterNode: Node
+): number[] => {
+    /*
+     * Suppose the node template is:
+     *
+     * HTML
+     * <div>
+     *     Hello
+     *     <!--$text$-->
+     *     <span>
+     *         <!--$text$-->
+     *     </span>
+     * </div>
+     *
+     * The fragment tree looks like this:
+     *
+     * root (DocumentFragment)
+     *     0: DIV
+     *         0: Text ("Hello\n ")
+     *         1: Comment ("text")
+     *         2: Text ("\n ")
+     *         3: SPAN
+     *             0: Comment ("text")
+     *             1: Text ("\n")
+     *
+     * The path to the comment inside the SPAN is: [0, 3, 0]
+     *
+     * 0: first child of fragment (DIV)
+     * 3: fourth child of DIV (SPAN)
+     * 0: first child of SPAN (the comment node)
+     *
+     * When you traverse the nodes, you start at the root and walk:
+     *
+     * let node: Node = documentFragment;
+     * for (const idx of path) {
+     *     node = node.childNodes[idx];
+     * }
+     *
+     * The resulting node is the node whose placeholder to replace or update.
+     */
+
+    const path = [];
+    let testNode: Node | null = node;
+    while (testNode !== null && testNode !== ancesterNode) {
+        const parent: ParentNode | null = testNode.parentNode;
+        if (!parent) {
+            break;
+        }
+        const children = Array.from(parent.childNodes);
+        path.unshift(children.indexOf(testNode as ChildNode));
+        testNode = parent;
+    }
+    return path;
+};
+
+const getNodeFromPathViaAncesterNode = (
+    path: number[],
+    ancesterNode: Node
+): Node | null => {
+    return path.reduce((accumulator: Node, currentValue: number): Node => {
+        return accumulator.childNodes[currentValue];
+    }, ancesterNode);
+};
+
 const templateCache = new WeakMap<TemplateStringsArray, TemplateCacheEntry>();
 
 const createTempleCacheEntry = (
@@ -59,7 +120,6 @@ const createTempleCacheEntry = (
      * Find substitution holes and mark each as a placeholder
      */
     let html = '';
-
     const reIsAttribute = /(\S+)=["']?/;
     const reIsEvent = /^on\w+$/i;
 
@@ -81,8 +141,6 @@ const createTempleCacheEntry = (
     const template = document.createElement('template');
     template.innerHTML = html.trim();
 
-    console.log(`HTML with placeholders:\n${html}`);
-
     /*
      * Find all substitution placeholders
      */
@@ -90,74 +148,71 @@ const createTempleCacheEntry = (
 
     const walker = document.createTreeWalker(
         template.content,
-        NodeFilter.SHOW_COMMENT,
+        NodeFilter.SHOW_ALL,
         {
+            // We only care for placeholders in the parsed template
+            //
+            // Note. A TreeWalker will never show the Attr node since its parent
+            // node is always null. Instead, to find the Attr node, we need to
+            // use the `Element.attributes` instead.
+            // Because of this, `NodeFilter.SHOW_COMMENT` cannot be used.
             acceptNode: (node): Node['ELEMENT_NODE'] | Node['TEXT_NODE'] => {
-                // Only accept comments that are placeholders for substitutions
-                return node.nodeValue === '$attr$' ||
-                    node.nodeValue === '$event$' ||
-                    node.nodeValue === '$text$'
-                    ? NodeFilter.FILTER_ACCEPT
-                    : NodeFilter.FILTER_SKIP;
+                // Check for attribute placeholders
+                if (node.nodeType === Node.ELEMENT_NODE) {
+                    const attrNodes = Array.from((node as Element).attributes);
+                    const acceptance = attrNodes.map(
+                        (attr): boolean =>
+                            attr.nodeValue === '<!--$attr$-->' ||
+                            attr.nodeValue === '<!--$event$-->'
+                    );
+                    if (acceptance.some(Boolean)) {
+                        return NodeFilter.FILTER_ACCEPT;
+                    }
+                }
+
+                // Check for Text placeholder
+                else if (node.nodeValue === '$text$') {
+                    return NodeFilter.FILTER_ACCEPT;
+                }
+
+                return NodeFilter.FILTER_SKIP;
             },
         }
     );
 
     while (walker.nextNode()) {
-        const comment = walker.currentNode as Comment;
+        const node = walker.currentNode;
+        const path = getChildPathToAncesterNode(node, template.content);
 
-        console.log(comment);
-        console.log(debugNode(comment));
-
-        // Test to find "true" parent... maybe. From copilot
-        console.log(comment.parentElement?.nodeName);
-        let path: number[] = [];
-        let n: Node | null = comment;
-        while (n && n !== template.content) {
-            const parent: ParentNode | null = n.parentNode;
-            if (!parent) break;
-            path.unshift(Array.prototype.indexOf.call(parent.childNodes, n));
-            n = parent;
-        }
-        console.log('-----');
-        console.log(path);
-        console.log(n);
-        console.log(n === comment.parentElement);
-        console.log('-----');
-
-        // comment.parentElement?.getAttributeNames().forEach((attr): void => {
-        //     // Only accept placeholder attributes
-        //     const attributeValue = comment.parentElement?.getAttribute(attr);
-        //     if (
-        //         attributeValue !== null &&
-        //         (attributeValue!.includes('<!--$event$-->') ||
-        //             attributeValue!.includes('<!--$attr$-->'))
-        //     ) {
-        //         if (reIsEvent.test(attr)) {
-        //             const event = attr.slice(2).toLowerCase(); // Remove "on" prefix
-        //             parts.push({
-        //                 node: comment.parentElement!,
-        //                 type: 'event',
-        //                 event,
-        //                 value: attributeValue!,
-        //                 substitutionMarker: '<!--$event$-->',
-        //             });
-        //         } else {
-        //             parts.push({
-        //                 node: comment.parentElement!,
-        //                 type: 'attr',
-        //                 attr,
-        //                 value: attributeValue!,
-        //                 substitutionMarker: '<!--$attr$-->',
-        //             });
-        //         }
-        //         // Remove the placeholder attribute
-        //         comment.parentElement!.removeAttribute(attr);
-        //     }
-        // });
-        if (comment.nodeValue === '$text$') {
+        // Handle text placeholders
+        if (node.nodeValue === '$text$') {
             partMeta.push({ type: 'text', path });
-            // parts.push({ node: comment as Text, type: 'text' });
+        } else if (
+            node.nodeType === Node.ELEMENT_NODE &&
+            (node as Element).hasAttributes()
+        ) {
+            // Check for attribute or event placeholders
+            partMeta.push(
+                ...Array.from((node as Element).attributes)
+                    .map((attr): Attr => attr)
+                    .filter(
+                        (attr): boolean =>
+                            attr.value === '<!--$attr$-->' ||
+                            attr.value === '<!--$event$-->'
+                    )
+                    .map((attr): PartMeta => {
+                        if (reIsEvent.test(attr.name)) {
+                            (node as Element).removeAttribute(attr.name);
+                            return {
+                                type: 'event',
+                                path,
+                                event: attr.name.slice(2).toLowerCase(), // Remove the "on" prefix
+                            };
+                        } else {
+                            return { type: 'attr', path, attr: attr.name };
+                        }
+                    })
+            );
         }
     }
 
@@ -173,194 +228,124 @@ type NodeInstance = {
     parts: Part[];
 };
 
-const debugNode = (node: Node): string =>
-    `(${node.nodeType}) ${node.nodeName} => ${node.nodeValue}`;
-
-const createNodeInstance = (
-    templateStrings: TemplateStringsArray,
-    substitutions: unknown[]
-) => {
-    if (!templateCache.has(templateStrings)) {
-        templateCache.set(
-            templateStrings,
-            createTempleCacheEntry(templateStrings)
-        );
-    }
-    const { template, partMeta } = templateCache.get(templateStrings)!;
-
-    console.log(partMeta);
-    const frag = template.content.cloneNode(true);
-    console.log(frag.childNodes);
-
-    const nodes = Array.from(frag.childNodes);
-
-    console.log(nodes.map(debugNode));
+const createNodeInstance = (templateResult: TemplateResult): NodeInstance => {
+    const parts: Part[] = [];
+    const { template, partMeta, substitutions } = templateResult;
+    const fragmentRoot = template.content.cloneNode(true);
 
     partMeta.forEach((meta, index): void => {
-        console.log(meta);
-        console.log(index);
+        const substitution = substitutions[index];
+        const node = getNodeFromPathViaAncesterNode(meta.path, fragmentRoot);
+        if (node === null) {
+            return;
+        }
+
+        switch (meta.type) {
+            case 'attr': {
+                (node as Element).setAttribute(
+                    meta.attr!,
+                    String(substitution)
+                );
+                parts.push({
+                    type: 'attr',
+                    node: node as Element,
+                    attr: meta.attr!,
+                });
+                break;
+            }
+
+            case 'event': {
+                console.log('event', debugNode(node));
+                break;
+            }
+
+            case 'text': {
+                const text = document.createTextNode(String(substitution));
+                node.parentNode?.replaceChild(text, node);
+                parts.push({ type: 'text', node: text });
+                break;
+            }
+        }
     });
 
-    const walker = document.createTreeWalker(
-        frag,
-        NodeFilter.SHOW_COMMENT,
-        null
-    );
+    return {
+        parent: null as unknown as Node,
+        nodes: Array.from(fragmentRoot.childNodes),
+        parts,
+    };
+};
 
-    while (walker.nextNode()) {
-        const node = walker.currentNode;
-        console.log(debugNode(node));
-    }
+export type TemplateResult = Readonly<TemplateCacheEntry> & {
+    readonly substitutions: unknown[];
 };
 
 export const html = (
     template: TemplateStringsArray,
     ...substitutions: unknown[]
-): Node => {
-    createNodeInstance(template, substitutions);
-
-    // const cachedTemplate = templateCache.get(template);
-    // if (!cachedTemplate) {
-    //     const cacheEntry = createTempleCacheEntry(template);
-
-    //     /*
-    //      * Replace placeholders with initial substitution values
-    //      *
-    //      * "Render"
-    //      */
-    //     cacheEntry.parts.forEach((part: Part, index: number): void => {
-    //         const substitution = substitutions[index];
-
-    //         switch (part.type) {
-    //             case 'attr': {
-    //                 part.node.parentElement?.setAttribute(
-    //                     part.attr!,
-    //                     part.value!.replace(
-    //                         part.substitutionMarker!,
-    //                         String(substitution)
-    //                     )
-    //                 );
-
-    //                 console.log(substitution);
-    //                 console.log(part);
-
-    //                 break;
-    //             }
-
-    //             case 'event': {
-    //                 // The event listener can be specified as either a callback
-    //                 // function or an object whose handleEvent() method serves
-    //                 // as the callback function. For now, just leave it as an
-    //                 // attribute.
-
-    //                 part.node.parentElement?.setAttribute(
-    //                     `on${part.event!}`,
-    //                     part.value!.replace(
-    //                         part.substitutionMarker!,
-    //                         String(substitution)
-    //                     )
-    //                 );
-
-    //                 console.log(substitution);
-    //                 console.log(part);
-
-    //                 break;
-    //             }
-
-    //             case 'text': {
-    //                 const text = document.createTextNode(String(substitution));
-    //                 cacheEntry.parts
-    //                     .filter((item): boolean => item.node === part.node)
-    //                     .forEach((item): void => {
-    //                         item.node.parentNode?.replaceChild(text, part.node);
-    //                         item.node = text;
-    //                     });
-
-    //                 // part.node.parentNode?.replaceChild(text, part.node);
-    //                 // part.node = text;
-
-    //                 break;
-    //             }
-
-    //             default: {
-    //                 // Do nothing
-    //                 break;
-    //             }
-    //         }
-    //     });
-
-    //     templateCache.set(template, cacheEntry);
-    //     return cacheEntry.template.content.cloneNode(true);
-    // } else {
-    //     /*
-    //      * Update dynamic parts in place
-    //      */
-    //     cachedTemplate.parts.forEach((part: Part, index: number): void => {
-    //         const substitution = substitutions[index];
-
-    //         switch (part.type) {
-    //             case 'attr': {
-    //                 part.node.parentElement?.setAttribute(
-    //                     part.attr!,
-    //                     part.value!.replace(
-    //                         part.substitutionMarker!,
-    //                         String(substitution)
-    //                     )
-    //                 );
-
-    //                 break;
-    //             }
-
-    //             case 'event': {
-    //                 part.node.parentElement?.setAttribute(
-    //                     `on${part.event!}`,
-    //                     part.value!.replace(
-    //                         part.substitutionMarker!,
-    //                         String(substitution)
-    //                     )
-    //                 );
-
-    //                 break;
-    //             }
-
-    //             case 'text': {
-    //                 (part.node as Text).textContent = String(substitution);
-
-    //                 break;
-    //             }
-
-    //             default: {
-    //                 // Do nothing
-    //                 break;
-    //             }
-    //         }
-    //     });
-
-    // return cachedTemplate.template.content.cloneNode(true);
-    // }
-    return document.createElement('div');
+): TemplateResult => {
+    if (!templateCache.has(template)) {
+        templateCache.set(template, createTempleCacheEntry(template));
+    }
+    const cacheEntry = templateCache.get(template)!;
+    return {
+        template: cacheEntry.template,
+        partMeta: cacheEntry.partMeta,
+        substitutions,
+    };
 };
 
-const containerCache = new WeakMap<Node, NodeInstance>();
+const nodeInstanceCache = new WeakMap<Node, NodeInstance>();
 
 /**
  * Render the html template to a HTML Node
- *
- * @returns
  */
-export const render =
-    (): // templateCacheWithSubstitutions: CacheEntry & { substitutions: unknown[] },
-    // container: Node
-    void => {
-        // const containerInstance = containerCache.get(container);
-        // if (!containerInstance) {
-        // } else {
-        // }
-    };
+export const render = (
+    templateResult: TemplateResult,
+    container: Node
+): void => {
+    if (!nodeInstanceCache.has(container)) {
+        // First time render with substitutions
+        const instance = createNodeInstance(templateResult);
+        instance.parent = container;
+        for (const node of instance.nodes) {
+            instance.parent.appendChild(node);
+        }
+        nodeInstanceCache.set(container, instance);
+    } else {
+        // Update with new subsitution values
+        const instance = nodeInstanceCache.get(container);
+        instance?.parts.forEach((part, index): void => {
+            const substition = templateResult.substitutions[index];
+            switch (part.type) {
+                case 'attr': {
+                    part.node.setAttribute(part.attr, String(substition));
+                    break;
+                }
+
+                case 'event': {
+                    break;
+                }
+
+                case 'text': {
+                    part.node.textContent = String(substition);
+                    break;
+                }
+            }
+        });
+    }
+};
 
 /**
  * Render the HTML template to a string, useful for static site...
  *
- * @returns
+ * @returns {string} The rendered HTML
  */
 export const renderToString = (): string => '';
+
+/**
+ * Temporary debug helper to render information about the node
+ * @param {Node} node The node to debug
+ * @returns {string} The node debug info
+ */
+const debugNode = (node: Node): string =>
+    `(${node.nodeType}) ${node.nodeName} => ${node.nodeValue}`;
