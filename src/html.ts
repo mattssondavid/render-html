@@ -11,19 +11,7 @@
  * * Perhaps just use lit-html?
  */
 
-type Part =
-    | { type: 'text'; node: Text }
-    | {
-          type: 'attr';
-          node: Element;
-          attr: string;
-      }
-    | {
-          type: 'event';
-          node: Element;
-          event: string;
-          lastHandler?: EventListener;
-      };
+import { getChildPathToAncesterNode } from './util/node/getChildPathToAncesterNode.ts';
 
 type PartMeta = {
     type: 'text' | 'attr' | 'event';
@@ -35,78 +23,6 @@ type PartMeta = {
 type TemplateCacheEntry = {
     template: HTMLTemplateElement;
     partMeta: PartMeta[];
-};
-
-/**
- * Determine current node's position in the node Tree as viewed from the
- * first parent's (e.g. an template DocumentFragment) children
- *
- * @returns {number[]} The path
- */
-const getChildPathToAncesterNode = (
-    node: Node,
-    ancesterNode: Node
-): number[] => {
-    /*
-     * Suppose the node template is:
-     *
-     * HTML
-     * <div>
-     *     Hello
-     *     <!--$text$-->
-     *     <span>
-     *         <!--$text$-->
-     *     </span>
-     * </div>
-     *
-     * The fragment tree looks like this:
-     *
-     * root (DocumentFragment)
-     *     0: DIV
-     *         0: Text ("Hello\n ")
-     *         1: Comment ("text")
-     *         2: Text ("\n ")
-     *         3: SPAN
-     *             0: Comment ("text")
-     *             1: Text ("\n")
-     *
-     * The path to the comment inside the SPAN is: [0, 3, 0]
-     *
-     * 0: first child of fragment (DIV)
-     * 3: fourth child of DIV (SPAN)
-     * 0: first child of SPAN (the comment node)
-     *
-     * When you traverse the nodes, you start at the root and walk:
-     *
-     * let node: Node = documentFragment;
-     * for (const idx of path) {
-     *     node = node.childNodes[idx];
-     * }
-     *
-     * The resulting node is the node whose placeholder to replace or update.
-     */
-
-    const path = [];
-    let testNode: Node | null = node;
-    while (testNode !== null && testNode !== ancesterNode) {
-        const parent: ParentNode | null = testNode.parentNode;
-        if (!parent) {
-            break;
-        }
-        const children = Array.from(parent.childNodes);
-        path.unshift(children.indexOf(testNode as ChildNode));
-        testNode = parent;
-    }
-    return path;
-};
-
-const getNodeFromPathViaAncesterNode = (
-    path: number[],
-    ancesterNode: Node
-): Node | null => {
-    return path.reduce((accumulator: Node, currentValue: number): Node => {
-        return accumulator.childNodes[currentValue];
-    }, ancesterNode);
 };
 
 const templateCache = new WeakMap<TemplateStringsArray, TemplateCacheEntry>();
@@ -222,59 +138,6 @@ const createTempleCacheEntry = (
     };
 };
 
-type NodeInstance = {
-    parent: Node;
-    nodes: Node[];
-    parts: Part[];
-};
-
-const createNodeInstance = (templateResult: TemplateResult): NodeInstance => {
-    const parts: Part[] = [];
-    const { template, partMeta, substitutions } = templateResult;
-    const fragmentRoot = template.content.cloneNode(true);
-
-    partMeta.forEach((meta, index): void => {
-        const substitution = substitutions[index];
-        const node = getNodeFromPathViaAncesterNode(meta.path, fragmentRoot);
-        if (node === null) {
-            return;
-        }
-
-        switch (meta.type) {
-            case 'attr': {
-                (node as Element).setAttribute(
-                    meta.attr!,
-                    String(substitution)
-                );
-                parts.push({
-                    type: 'attr',
-                    node: node as Element,
-                    attr: meta.attr!,
-                });
-                break;
-            }
-
-            case 'event': {
-                console.log('event', debugNode(node));
-                break;
-            }
-
-            case 'text': {
-                const text = document.createTextNode(String(substitution));
-                node.parentNode?.replaceChild(text, node);
-                parts.push({ type: 'text', node: text });
-                break;
-            }
-        }
-    });
-
-    return {
-        parent: null as unknown as Node,
-        nodes: Array.from(fragmentRoot.childNodes),
-        parts,
-    };
-};
-
 export type TemplateResult = Readonly<TemplateCacheEntry> & {
     readonly substitutions: unknown[];
 };
@@ -293,59 +156,3 @@ export const html = (
         substitutions,
     };
 };
-
-const nodeInstanceCache = new WeakMap<Node, NodeInstance>();
-
-/**
- * Render the html template to a HTML Node
- */
-export const render = (
-    templateResult: TemplateResult,
-    container: Node
-): void => {
-    if (!nodeInstanceCache.has(container)) {
-        // First time render with substitutions
-        const instance = createNodeInstance(templateResult);
-        instance.parent = container;
-        for (const node of instance.nodes) {
-            instance.parent.appendChild(node);
-        }
-        nodeInstanceCache.set(container, instance);
-    } else {
-        // Update with new subsitution values
-        const instance = nodeInstanceCache.get(container);
-        instance?.parts.forEach((part, index): void => {
-            const substition = templateResult.substitutions[index];
-            switch (part.type) {
-                case 'attr': {
-                    part.node.setAttribute(part.attr, String(substition));
-                    break;
-                }
-
-                case 'event': {
-                    break;
-                }
-
-                case 'text': {
-                    part.node.textContent = String(substition);
-                    break;
-                }
-            }
-        });
-    }
-};
-
-/**
- * Render the HTML template to a string, useful for static site...
- *
- * @returns {string} The rendered HTML
- */
-export const renderToString = (): string => '';
-
-/**
- * Temporary debug helper to render information about the node
- * @param {Node} node The node to debug
- * @returns {string} The node debug info
- */
-const debugNode = (node: Node): string =>
-    `(${node.nodeType}) ${node.nodeName} => ${node.nodeValue}`;
