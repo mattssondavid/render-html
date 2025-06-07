@@ -1,0 +1,17 @@
+# Default behavior
+* text eol=lf
+
+# Text files
+## Explicit set text-based files as LF line ending
+*.json      text eol=lf
+*.sh        text eol=lf
+*.txt       text eol=lf
+*.xml       text eol=lf
+
+# Images
+*.ico       binary
+*.jpg       binary
+*.jpeg      binary
+*.png       binary
+*.svg       binary
+*.webp      binary

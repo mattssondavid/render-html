@@ -1,0 +1,46 @@
+{
+    "deno.enable": true,
+    "deno.lint": true,
+    "deno.config": "deno.json",
+    "typescript.inlayHints.enumMemberValues.enabled": false,
+    "typescript.inlayHints.functionLikeReturnTypes.enabled": true,
+    "typescript.inlayHints.parameterNames.enabled": "none",
+    "typescript.inlayHints.parameterTypes.enabled": false,
+    "typescript.inlayHints.propertyDeclarationTypes.enabled": false,
+    "typescript.inlayHints.variableTypes.enabled": false,
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "[html]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode"
+    },
+    "[css]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode"
+    },
+    "[javascript]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode"
+    },
+    "[json]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode"
+    },
+    "[typescript]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode"
+    },
+    "[xml]": {
+        "editor.defaultFormatter": "redhat.vscode-xml"
+    },
+    "editor.formatOnSave": true,
+    "editor.formatOnPaste": false,
+    "editor.rulers": [80, 120],
+    "editor.tabSize": 4,
+    "editor.trimAutoWhitespace": true,
+    "files.eol": "\n",
+    "files.insertFinalNewline": true,
+    "files.trimTrailingWhitespace": true,
+    "html.format.wrapAttributes": "force-expand-multiline",
+    "html.format.wrapLineLength": 80,
+    "javascript.format.semicolons": "insert",
+    "prettier.useEditorConfig": false,
+    "prettier.configPath": ".prettierrc",
+    "typescript.format.semicolons": "insert",
+    "grammarly.config.documentDialect": "british",
+    "grammarly.config.documentDomain": "general"
+}

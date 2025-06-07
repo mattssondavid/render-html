@@ -1,0 +1,26 @@
+{
+    "compilerOptions": {
+        "lib": ["dom", "dom.iterable", "dom.asynciterable", "deno.ns"]
+    },
+    "fmt": {
+        "files": {
+            "include": ["./src/"]
+        },
+        "options": {
+            "indentWidth": 4,
+            "lineWidth": 80,
+            "proseWrap": "preserve",
+            "singleQuote": true,
+            "useTabs": false
+        }
+    },
+    "imports": {
+        "@src/": "./src/",
+        "@std": "jsr:@std"
+    },
+    "tasks": {
+        "build": "echo 'Not Implemented'",
+        "test": "deno test --allow-env --allow-write"
+    },
+    "vendor": true
+}
