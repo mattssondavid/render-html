@@ -1,4 +1,5 @@
-import { html, render, type TemplateResult } from '@src/html.ts';
+import { html, type TemplateResult } from '@src/html.ts';
+import { render } from '@src/render.ts';
 import '@src/server/shim/shim-dom.ts';
 import { assertEquals } from '@std/assert';
 import { afterEach, beforeEach, describe, it } from '@std/testing/bdd';
