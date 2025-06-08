@@ -72,7 +72,7 @@ const createTempleCacheEntry = (
             // node is always null. Instead, to find the Attr node, we need to
             // use the `Element.attributes` instead.
             // Because of this, `NodeFilter.SHOW_COMMENT` cannot be used.
-            acceptNode: (node): Node['ELEMENT_NODE'] | Node['TEXT_NODE'] => {
+            acceptNode: (node): number => {
                 // Check for attribute placeholders
                 if (node.nodeType === Node.ELEMENT_NODE) {
                     const attrNodes = Array.from((node as Element).attributes);
