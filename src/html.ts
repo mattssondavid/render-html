@@ -1,16 +1,3 @@
-/*
- * Below is in development experimenting from
- * https://www.youtube.com/watch?v=0C-y59betmY&list=PLdpUaRRxvs_SvYFG18jiI1MumBoPGFep7&index=87
- *
- * The idea is to make more efficient DOM manipulation by only updating bits
- * that neds to be updated. Also called "dirty checking" rendering.
- *
- * Thoughts:
- * * Should document fragment be used if the node has a lot of children? It would do 1 DOM insert instead of N-times (once per child)
- *
- * * Perhaps just use lit-html?
- */
-
 import { getChildPathToAncesterNode } from './util/node/getChildPathToAncesterNode.ts';
 
 type PartMeta = {
@@ -142,6 +129,16 @@ export type TemplateResult = Readonly<TemplateCacheEntry> & {
     readonly substitutions: unknown[];
 };
 
+/**
+ * Parse the HTML template and substitutions, creating a template result to have
+ * efficient DOM manipulation by only updating bits (substitutions) that needs
+ * to be updated via a `render` function by using a "dirty check" rendering
+ * approach for DOM manipulation.
+ *
+ * @param {TemplateStringsArray} template
+ * @param {unknown[]} substitutions
+ * @returns {TemplateResult} the created template result
+ */
 export const html = (
     template: TemplateStringsArray,
     ...substitutions: unknown[]

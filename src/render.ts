@@ -19,10 +19,21 @@ type Part =
           type: 'event';
           node: Element;
           event: string;
-          lastHandler?: EventListener;
+          lastEventListener?: EventListener;
       };
 
 const nodeInstanceCache = new WeakMap<Node, NodeInstance>();
+
+const isHandleEventObject = (
+    obj: unknown
+): obj is { handleEvent(event?: Event): void } => {
+    return (
+        typeof obj === 'object' &&
+        obj !== null &&
+        'handleEvent' in obj &&
+        typeof (obj as { handleEvent: unknown }).handleEvent === 'function'
+    );
+};
 
 const createNodeInstance = (templateResult: TemplateResult): NodeInstance => {
     const parts: Part[] = [];
@@ -51,7 +62,25 @@ const createNodeInstance = (templateResult: TemplateResult): NodeInstance => {
             }
 
             case 'event': {
-                console.log('event', debugNode(node));
+                // Check substitution value to determine what to do
+                let eventListener: EventListener | null = null;
+                if (typeof substitution === 'function') {
+                    eventListener = substitution as EventListener;
+                } else if (isHandleEventObject(substitution)) {
+                    eventListener = substitution.handleEvent as EventListener;
+                }
+                if (eventListener) {
+                    (node as Element).addEventListener(
+                        meta.event!,
+                        eventListener
+                    );
+                    parts.push({
+                        type: 'event',
+                        node: node as Element,
+                        event: meta.event!,
+                        lastEventListener: eventListener,
+                    });
+                }
                 break;
             }
 
@@ -90,19 +119,36 @@ export const render = (
         // Update with new subsitution values
         const instance = nodeInstanceCache.get(container);
         instance?.parts.forEach((part, index): void => {
-            const substition = templateResult.substitutions[index];
+            const substitution = templateResult.substitutions[index];
             switch (part.type) {
                 case 'attr': {
-                    part.node.setAttribute(part.attr, String(substition));
+                    part.node.setAttribute(part.attr, String(substitution));
                     break;
                 }
 
                 case 'event': {
+                    let eventListener: EventListener | null = null;
+                    if (typeof substitution === 'function') {
+                        eventListener = substitution as EventListener;
+                    } else if (isHandleEventObject(substitution)) {
+                        eventListener =
+                            substitution.handleEvent as EventListener;
+                    }
+                    if (part.lastEventListener) {
+                        part.node.removeEventListener(
+                            part.event,
+                            part.lastEventListener
+                        );
+                    }
+                    if (eventListener) {
+                        part.node.addEventListener(part.event, eventListener);
+                        part.lastEventListener = eventListener;
+                    }
                     break;
                 }
 
                 case 'text': {
-                    part.node.textContent = String(substition);
+                    part.node.textContent = String(substitution);
                     break;
                 }
             }
