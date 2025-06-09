@@ -92,18 +92,35 @@ describe('html tagged template literal node', (): void => {
         assertEquals(container.innerHTML, '<div data-id="1">hi</div>');
     });
 
-    // it('can handle event', (): void => {
-    //     const template = (f: () => void): TemplateResult =>
-    //         // prettier-ignore
-    //         html`<button onclick="${f}">Hi</button>`;
-    //     let counter = 0;
-    //     const eventHandler = (): void => {
-    //         counter += 1;
-    //     };
-    //     render(template(eventHandler), container);
-    //     container.querySelector('button')?.click();
-    //     assertEquals(counter, 1);
-    // });
+    it('can handle event', (): void => {
+        const template = (f: () => void): TemplateResult =>
+            // prettier-ignore
+            html`<button onclick="${f}">Hi</button>`;
+        let counter = 0;
+        const eventHandler = (): void => {
+            counter += 1;
+        };
+        render(template(eventHandler), container);
+        container.querySelector('button')?.click();
+        assertEquals(counter, 1);
+    });
+
+    it('can handle updating event', (): void => {
+        const template = (f: () => void): TemplateResult =>
+            // prettier-ignore
+            html`<button onclick="${f}">Hi</button>`;
+        let counter = 0;
+        const eventHandler = (): void => {
+            counter += 1;
+        };
+        render(template(eventHandler), container);
+        container.querySelector('button')?.click();
+        render(template(eventHandler), container);
+        container.querySelector('button')?.click();
+        assertEquals(counter, 2);
+        container.querySelector('button')?.click();
+        assertEquals(counter, 3);
+    });
 
     // it('can handle rendering template parts', (): void => {
     //     const title = 'hello world';
