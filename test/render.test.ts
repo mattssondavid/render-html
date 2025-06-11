@@ -4,7 +4,7 @@ import '@src/server/shim/shim-dom.ts';
 import { assertEquals } from '@std/assert';
 import { afterEach, beforeEach, describe, it } from '@std/testing/bdd';
 
-describe('html tagged template literal node', (): void => {
+describe('render', (): void => {
     let container: HTMLElement;
 
     beforeEach((): void => {
