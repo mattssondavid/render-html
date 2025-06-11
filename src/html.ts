@@ -129,6 +129,71 @@ export type TemplateResult = Readonly<TemplateCacheEntry> & {
     readonly substitutions: unknown[];
 };
 
+const isPartMeta = (input: unknown): input is PartMeta => {
+    if (typeof input !== 'object' || input === null) {
+        return false;
+    }
+
+    if (!('type' in input) || !('path' in input)) {
+        return false;
+    }
+
+    if (
+        input.type !== 'text' &&
+        input.type !== 'attr' &&
+        input.type !== 'event'
+    ) {
+        return false;
+    }
+
+    if (
+        !Array.isArray(input.path) ||
+        !input.path.every((n): n is number => typeof n === 'number')
+    ) {
+        return false;
+    }
+
+    if ('attr' in input && typeof input.attr !== 'string') {
+        return false;
+    }
+
+    if ('event' in input && typeof input.event !== 'string') {
+        return false;
+    }
+    if (
+        'lastEventListener' in input &&
+        typeof input.lastEventListener !== 'undefined' &&
+        (typeof input.lastEventListener !== 'object' ||
+            input.lastEventListener === null)
+    ) {
+        return false;
+    }
+
+    return true;
+};
+
+const isTemplateCacheEntry = (input: unknown): input is TemplateCacheEntry => {
+    return (
+        typeof input === 'object' &&
+        input !== null &&
+        'template' in input &&
+        input.template instanceof HTMLTemplateElement &&
+        'partMeta' in input &&
+        Array.isArray(input.partMeta) &&
+        input.partMeta.every(isPartMeta)
+    );
+};
+
+export const isTemplateResult = (input: unknown): input is TemplateResult => {
+    return (
+        typeof input === 'object' &&
+        input !== null &&
+        isTemplateCacheEntry(input) &&
+        'substitutions' in input &&
+        Array.isArray(input.substitutions)
+    );
+};
+
 /**
  * Parse the HTML template and substitutions, creating a template result to have
  * efficient DOM manipulation by only updating bits (substitutions) that needs

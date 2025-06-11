@@ -1,5 +1,4 @@
-import { TemplateResult } from './html.ts';
-import { debugNode } from './util/node/debugNode.ts';
+import { isTemplateResult, type TemplateResult } from './html.ts';
 import { getNodeFromPathViaAncesterNode } from './util/node/getNodeFromPathViaAncesterNode.ts';
 
 type NodeInstance = {
@@ -9,7 +8,11 @@ type NodeInstance = {
 };
 
 type Part =
-    | { type: 'text'; node: Text }
+    | {
+          type: 'text';
+          node: Node;
+          lastValue: unknown;
+      }
     | {
           type: 'attr';
           node: Element;
@@ -85,9 +88,34 @@ const createNodeInstance = (templateResult: TemplateResult): NodeInstance => {
             }
 
             case 'text': {
-                const text = document.createTextNode(String(substitution));
-                node.parentNode?.replaceChild(text, node);
-                parts.push({ type: 'text', node: text });
+                if (isTemplateResult(substitution)) {
+                    // Append each nested template's nodes to current node's parent node
+                    const nestedInstance = createNodeInstance(substitution);
+                    const fragment = document.createDocumentFragment();
+                    nestedInstance.nodes.forEach((nestedNode: Node): void => {
+                        fragment.appendChild(nestedNode);
+                    });
+                    // Since `node` is expected to be a Comment node, we cannot use
+                    // `Element.replaceWith()`
+                    node.parentNode?.replaceChild(fragment, node);
+
+                    if (nestedInstance.nodes.length) {
+                        parts.push({
+                            type: 'text',
+                            node: nestedInstance.nodes.at(0)!,
+                            lastValue: substitution,
+                        });
+                    }
+                } else if (Array.isArray(substitution)) {
+                } else {
+                    const text = document.createTextNode(String(substitution));
+                    node.parentNode?.replaceChild(text, node);
+                    parts.push({
+                        type: 'text',
+                        node: text,
+                        lastValue: substitution,
+                    });
+                }
                 break;
             }
         }
@@ -148,7 +176,41 @@ export const render = (
                 }
 
                 case 'text': {
-                    part.node.textContent = String(substitution);
+                    if (substitution === part.lastValue) {
+                        // No changes
+                        break;
+                    }
+
+                    if (isTemplateResult(substitution)) {
+                        if (isTemplateResult(part.lastValue)) {
+                            // Recursively update
+                            const nestedInstance = createNodeInstance(
+                                part.lastValue
+                            );
+                            render(
+                                substitution,
+                                nestedInstance.parent ?? part.node.parentNode!
+                            );
+                        } else {
+                            // Replace nodes
+                            const nestedInstance =
+                                createNodeInstance(substitution);
+                            const fragment = document.createDocumentFragment();
+                            nestedInstance.nodes.forEach(
+                                (nestedNode: Node): void => {
+                                    fragment.appendChild(nestedNode);
+                                }
+                            );
+                            part.node.parentNode?.replaceChild(
+                                fragment,
+                                part.node
+                            );
+                        }
+                    } else if (Array.isArray(substitution)) {
+                    } else {
+                        part.node.textContent = String(substitution);
+                    }
+                    part.lastValue = substitution;
                     break;
                 }
             }
