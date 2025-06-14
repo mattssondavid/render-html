@@ -47,7 +47,6 @@ describe('render', (): void => {
         const template = (title: string, content: string): TemplateResult =>
             // prettier-ignore
             html`<article><h2>${title}</h2><p>${content}</p></article>`;
-
         render(template('Hi', 'Hello world'), container);
         assertEquals(
             container.innerHTML,
