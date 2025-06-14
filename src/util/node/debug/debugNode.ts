@@ -1,5 +1,6 @@
 /**
  * Temporary debug helper to render information about the node
+ *
  * @param {Node} node The node to debug
  * @returns {string} The node debug info
  */
