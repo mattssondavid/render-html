@@ -4,7 +4,7 @@ import '@src/server/shim/shim-dom.ts';
 import { assertEquals } from '@std/assert';
 import { afterEach, beforeEach, describe, it } from '@std/testing/bdd';
 
-describe('html tagged template literal node', (): void => {
+describe('render', (): void => {
     let container: HTMLElement;
 
     beforeEach((): void => {
@@ -122,12 +122,52 @@ describe('html tagged template literal node', (): void => {
         assertEquals(counter, 3);
     });
 
-    // it('can handle rendering template parts', (): void => {
-    //     const title = 'hello world';
-    //     const header = html`<h1>${title}</h1>`;
-    //     // prettier-ignore
-    //     const content = html`${header}<p>content</p>`;
-    //     render(content, container);
-    //     assertEquals(container.innerHTML, `<h1>${title}</h1><p>content</p>`);
-    // });
+    it('can handle rendering single nested template part', (): void => {
+        const template = (title: string): TemplateResult => {
+            const header = html`<h1>${title}</h1>`;
+            // prettier-ignore
+            return html`${header}<p>content</p>`;
+        };
+        // First render, i.e. first time rendering
+        render(template('hello world'), container);
+        assertEquals(container.innerHTML, `<h1>hello world</h1><p>content</p>`);
+        // Render update
+        render(template('hi there'), container);
+        assertEquals(container.innerHTML, `<h1>hi there</h1><p>content</p>`);
+    });
+
+    it('can handle rendering multiple nested template parts', (): void => {
+        const template = (title: string, footer: string): TemplateResult => {
+            const header = html`<h1>${title}</h1>`;
+            // prettier-ignore
+            const content = html`${header}<p>content</p>`;
+            // prettier-ignore
+            return html`${content}<div>${footer}</div>`;
+        };
+        render(template('1', '2'), container);
+        assertEquals(
+            container.innerHTML,
+            `<h1>1</h1><p>content</p><div>2</div>`
+        );
+        // Render update
+        render(template('1', '3'), container);
+        assertEquals(
+            container.innerHTML,
+            `<h1>1</h1><p>content</p><div>3</div>`
+        );
+    });
+
+    it('can handle rendering single nested template part where child has one attribute', (): void => {
+        const template = (title: string, attr: string): TemplateResult => {
+            const header = html`<h1>${title}</h1>`;
+            // prettier-ignore
+            return html`${header}<p id="${attr}">content</p>`;
+        };
+        // First render, i.e. first time rendering
+        render(template('1', 'a1'), container);
+        assertEquals(container.innerHTML, `<h1>1</h1><p id="a1">content</p>`);
+        // Render update
+        render(template('2', 'a2'), container);
+        assertEquals(container.innerHTML, `<h1>2</h1><p id="a2">content</p>`);
+    });
 });

@@ -1,5 +1,4 @@
-import { TemplateResult } from './html.ts';
-import { debugNode } from './util/node/debugNode.ts';
+import { isTemplateResult, type TemplateResult } from './html.ts';
 import { getNodeFromPathViaAncesterNode } from './util/node/getNodeFromPathViaAncesterNode.ts';
 
 type NodeInstance = {
@@ -9,7 +8,11 @@ type NodeInstance = {
 };
 
 type Part =
-    | { type: 'text'; node: Text }
+    | {
+          type: 'text';
+          nodes: Node[];
+          lastValue: unknown;
+      }
     | {
           type: 'attr';
           node: Element;
@@ -40,9 +43,17 @@ const createNodeInstance = (templateResult: TemplateResult): NodeInstance => {
     const { template, partMeta, substitutions } = templateResult;
     const fragmentRoot = template.content.cloneNode(true);
 
+    // Track nodes to substitute.
+    // When we are actually traversing the `partMeta` then we will do DOM
+    // manipulation which can cause the meta node path to become inaccurate
+    const subsituteNodes = partMeta.map((meta): Node | null =>
+        getNodeFromPathViaAncesterNode(meta.path, fragmentRoot)
+    );
+
+    // Perform initial ("first render") DOM manipulation
     partMeta.forEach((meta, index): void => {
         const substitution = substitutions[index];
-        const node = getNodeFromPathViaAncesterNode(meta.path, fragmentRoot);
+        const node = subsituteNodes[index];
         if (node === null) {
             return;
         }
@@ -85,9 +96,36 @@ const createNodeInstance = (templateResult: TemplateResult): NodeInstance => {
             }
 
             case 'text': {
-                const text = document.createTextNode(String(substitution));
-                node.parentNode?.replaceChild(text, node);
-                parts.push({ type: 'text', node: text });
+                if (isTemplateResult(substitution)) {
+                    // Append each nested template's nodes to current node's
+                    // parent node
+                    const nestedInstance = createNodeInstance(substitution);
+                    if (node.parentNode) {
+                        nestedInstance.parent = node.parentNode;
+                    }
+                    const fragment = document.createDocumentFragment();
+                    nestedInstance.nodes.forEach((nestedNode: Node): void => {
+                        fragment.appendChild(nestedNode);
+                    });
+                    // Since `node` is expected to be a Comment node, we cannot
+                    // use `Element.replaceWith()`
+                    node.parentNode?.replaceChild(fragment, node);
+                    parts.push({
+                        type: 'text',
+                        nodes: nestedInstance.nodes,
+                        lastValue: substitution, // Used for render update
+                    });
+                } else if (Array.isArray(substitution)) {
+                    // ToDo: Implement support
+                } else {
+                    const text = document.createTextNode(String(substitution));
+                    node.parentNode?.replaceChild(text, node);
+                    parts.push({
+                        type: 'text',
+                        nodes: [text],
+                        lastValue: substitution,
+                    });
+                }
                 break;
             }
         }
@@ -101,7 +139,10 @@ const createNodeInstance = (templateResult: TemplateResult): NodeInstance => {
 };
 
 /**
- * Render the html template to a HTML Node
+ * Render a HTML Template Result to a DOM Node
+ *
+ * @param {TemplateResult} templateResult The template to render
+ * @param {Node} container The node to use as a host for the rendered HTML template
  */
 export const render = (
     templateResult: TemplateResult,
@@ -148,7 +189,41 @@ export const render = (
                 }
 
                 case 'text': {
-                    part.node.textContent = String(substitution);
+                    if (substitution === part.lastValue) {
+                        // No changes
+                        break;
+                    }
+
+                    if (isTemplateResult(substitution)) {
+                        if (isTemplateResult(part.lastValue)) {
+                            // Recursively update
+                            const nestedInstance = createNodeInstance(
+                                part.lastValue
+                            );
+                            render(
+                                substitution,
+                                nestedInstance.parent ??
+                                    part.nodes[0].parentNode!
+                            );
+                        } else {
+                            // Replace nodes
+                            const nestedInstance =
+                                createNodeInstance(substitution);
+                            const fragment = document.createDocumentFragment();
+                            nestedInstance.nodes.forEach(
+                                (nestedNode: Node): void => {
+                                    fragment.appendChild(nestedNode);
+                                }
+                            );
+                            const firstNode = part.nodes[0];
+                            firstNode?.replaceChild(fragment, firstNode);
+                        }
+                    } else if (Array.isArray(substitution)) {
+                        // ToDo: Implement support
+                    } else {
+                        part.nodes[0].textContent = String(substitution);
+                    }
+                    part.lastValue = substitution;
                     break;
                 }
             }
