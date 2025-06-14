@@ -4,7 +4,7 @@ import { assertEquals } from '@std/assert';
 import { describe, it } from '@std/testing/bdd';
 import { renderToString } from '@src/renderToString.ts';
 
-describe('render', (): void => {
+describe('renderToString', (): void => {
     it('can handle no substitution', (): void => {
         const template = (): TemplateResult => html`<p>hi</p>`;
         const actual = renderToString(template());
