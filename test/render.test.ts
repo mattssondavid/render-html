@@ -18,13 +18,13 @@ describe('render', (): void => {
         }
     });
 
-    it('can handle no substition', (): void => {
+    it('can handle no substitution', (): void => {
         const template = (): TemplateResult => html`<p>hi</p>`;
         render(template(), container);
         assertEquals(container.innerHTML, `<p>hi</p>`);
     });
 
-    it('can handle no substition with children', (): void => {
+    it('can handle no substitution with children', (): void => {
         const template = (): TemplateResult =>
             // prettier-ignore
             html`<article><h2>Hi</h2><p>Hello world</p></article>`;
@@ -66,7 +66,7 @@ describe('render', (): void => {
         );
     });
 
-    it('can handle substition update', (): void => {
+    it('can handle substitution update', (): void => {
         const template = (count: number): TemplateResult =>
             // prettier-ignore
             html`<div>${count}</div>`;
@@ -92,7 +92,7 @@ describe('render', (): void => {
         assertEquals(container.innerHTML, '<div data-id="1">hi</div>');
     });
 
-    it('can handle event', (): void => {
+    it('can handle event substitution', (): void => {
         const template = (f: () => void): TemplateResult =>
             // prettier-ignore
             html`<button onclick="${f}">Hi</button>`;
@@ -105,7 +105,7 @@ describe('render', (): void => {
         assertEquals(counter, 1);
     });
 
-    it('can handle updating event', (): void => {
+    it('can handle updating event substitution', (): void => {
         const template = (f: () => void): TemplateResult =>
             // prettier-ignore
             html`<button onclick="${f}">Hi</button>`;
@@ -122,7 +122,7 @@ describe('render', (): void => {
         assertEquals(counter, 3);
     });
 
-    it('can handle rendering single nested template part', (): void => {
+    it('can handle substitution rendering single nested template part', (): void => {
         const template = (title: string): TemplateResult => {
             const header = html`<h1>${title}</h1>`;
             // prettier-ignore
@@ -136,7 +136,7 @@ describe('render', (): void => {
         assertEquals(container.innerHTML, `<h1>hi there</h1><p>content</p>`);
     });
 
-    it('can handle rendering multiple nested template parts', (): void => {
+    it('can handle substitution rendering multiple nested template parts', (): void => {
         const template = (title: string, footer: string): TemplateResult => {
             const header = html`<h1>${title}</h1>`;
             // prettier-ignore
@@ -157,7 +157,7 @@ describe('render', (): void => {
         );
     });
 
-    it('can handle rendering single nested template part where child has one attribute', (): void => {
+    it('can handle substitution rendering single nested template part where child has one attribute', (): void => {
         const template = (title: string, attr: string): TemplateResult => {
             const header = html`<h1>${title}</h1>`;
             // prettier-ignore
