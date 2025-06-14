@@ -125,10 +125,6 @@ const createTempleCacheEntry = (
     };
 };
 
-export type TemplateResult = Readonly<TemplateCacheEntry> & {
-    readonly substitutions: unknown[];
-};
-
 const isPartMeta = (input: unknown): input is PartMeta => {
     if (typeof input !== 'object' || input === null) {
         return false;
@@ -184,6 +180,19 @@ const isTemplateCacheEntry = (input: unknown): input is TemplateCacheEntry => {
     );
 };
 
+/**
+ * The `TemplateResult`
+ */
+export type TemplateResult = Readonly<TemplateCacheEntry> & {
+    readonly substitutions: unknown[];
+};
+
+/**
+ * Check if the input is a TemplateResult
+ *
+ * @param {any} input The value to check
+ * @returns {boolean} True if and only if the input _is_ a `TemplateResult`
+ */
 export const isTemplateResult = (input: unknown): input is TemplateResult => {
     return (
         typeof input === 'object' &&
@@ -202,7 +211,7 @@ export const isTemplateResult = (input: unknown): input is TemplateResult => {
  *
  * @param {TemplateStringsArray} template
  * @param {unknown[]} substitutions
- * @returns {TemplateResult} the created template result
+ * @returns {TemplateResult} the created Template Result
  */
 export const html = (
     template: TemplateStringsArray,
