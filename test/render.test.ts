@@ -70,9 +70,17 @@ describe('render', (): void => {
             // prettier-ignore
             html`<div>${count}</div>`;
         render(template(1), container);
-        assertEquals(container.innerHTML, '<div>1</div>');
+        assertEquals(
+            container.innerHTML,
+            '<div>1</div>',
+            'first time render mismatch'
+        );
         render(template(2), container);
-        assertEquals(container.innerHTML, '<div>2</div>');
+        assertEquals(
+            container.innerHTML,
+            '<div>2</div>',
+            'update render mismatch'
+        );
     });
 
     it('can handle attribute substitution', (): void => {
@@ -116,9 +124,9 @@ describe('render', (): void => {
         container.querySelector('button')?.click();
         render(template(eventHandler), container);
         container.querySelector('button')?.click();
-        assertEquals(counter, 2);
+        assertEquals(counter, 2, 'first time render mismatch');
         container.querySelector('button')?.click();
-        assertEquals(counter, 3);
+        assertEquals(counter, 3, 'update render mismatch');
     });
 
     it('can handle substitution rendering single nested template part', (): void => {
@@ -129,10 +137,18 @@ describe('render', (): void => {
         };
         // First render, i.e. first time rendering
         render(template('hello world'), container);
-        assertEquals(container.innerHTML, `<h1>hello world</h1><p>content</p>`);
+        assertEquals(
+            container.innerHTML,
+            `<h1>hello world</h1><p>content</p>`,
+            'first time render mismatch'
+        );
         // Render update
         render(template('hi there'), container);
-        assertEquals(container.innerHTML, `<h1>hi there</h1><p>content</p>`);
+        assertEquals(
+            container.innerHTML,
+            `<h1>hi there</h1><p>content</p>`,
+            'update render mismatch'
+        );
     });
 
     it('can handle substitution rendering multiple nested template parts', (): void => {
@@ -146,13 +162,15 @@ describe('render', (): void => {
         render(template('1', '2'), container);
         assertEquals(
             container.innerHTML,
-            `<h1>1</h1><p>content</p><div>2</div>`
+            `<h1>1</h1><p>content</p><div>2</div>`,
+            'first time render mismatch'
         );
         // Render update
         render(template('1', '3'), container);
         assertEquals(
             container.innerHTML,
-            `<h1>1</h1><p>content</p><div>3</div>`
+            `<h1>1</h1><p>content</p><div>3</div>`,
+            'update render mismatch'
         );
     });
 
@@ -164,9 +182,38 @@ describe('render', (): void => {
         };
         // First render, i.e. first time rendering
         render(template('1', 'a1'), container);
-        assertEquals(container.innerHTML, `<h1>1</h1><p id="a1">content</p>`);
+        assertEquals(
+            container.innerHTML,
+            `<h1>1</h1><p id="a1">content</p>`,
+            'first time render mismatch'
+        );
         // Render update
         render(template('2', 'a2'), container);
-        assertEquals(container.innerHTML, `<h1>2</h1><p id="a2">content</p>`);
+        assertEquals(
+            container.innerHTML,
+            `<h1>2</h1><p id="a2">content</p>`,
+            'update render mismatch'
+        );
+    });
+
+    it('can handle substitution rendering with arrays', (): void => {
+        const template = (values: string[]): TemplateResult => {
+            // prettier-ignore
+            return html`<ul>${
+                values.map((value): TemplateResult => html`<li>${value}</li>`)
+            }</ul>`;
+        };
+        render(template(['1', '2']), container);
+        assertEquals(
+            container.innerHTML,
+            `<ul><li>1</li><li>2</li></ul>`,
+            'first time render mismatch'
+        );
+        render(template(['1', '2', '3']), container);
+        assertEquals(
+            container.innerHTML,
+            `<ul><li>1</li><li>2</li><li>3</li></ul>`,
+            'update render mismatch'
+        );
     });
 });
