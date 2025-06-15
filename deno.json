@@ -19,8 +19,9 @@
         "@std": "jsr:@std"
     },
     "tasks": {
+        "bench": "deno bench --allow-env",
         "build": "echo 'Not Implemented'",
-        "test": "deno test --allow-env --allow-write"
+        "test": "deno test --allow-env"
     },
     "vendor": true
 }
