@@ -1,4 +1,5 @@
 import { isTemplateResult, type TemplateResult } from './html.ts';
+import { treePrintNode } from './util/node/debug/treePrintNode.ts';
 import { getNodeFromPathViaAncesterNode } from './util/node/getNodeFromPathViaAncesterNode.ts';
 
 type NodeInstance = {
@@ -116,7 +117,26 @@ const createNodeInstance = (templateResult: TemplateResult): NodeInstance => {
                         lastValue: substitution, // Used for render update
                     });
                 } else if (Array.isArray(substitution)) {
-                    // ToDo: Implement support
+                    const fragment = document.createDocumentFragment();
+                    substitution.forEach((item): void => {
+                        if (isTemplateResult(item)) {
+                            const nestedInstance = createNodeInstance(item);
+                            nestedInstance.nodes.forEach(
+                                (nestedNode: Node): void => {
+                                    fragment.appendChild(nestedNode);
+                                }
+                            );
+                        } else {
+                            const text = document.createTextNode(String(item));
+                            fragment.appendChild(text);
+                        }
+                    });
+                    node.parentNode?.replaceChild(fragment, node);
+                    parts.push({
+                        type: 'text',
+                        nodes: Array.from(fragment.childNodes),
+                        lastValue: substitution, // Used for render update
+                    });
                 } else {
                     const text = document.createTextNode(String(substitution));
                     node.parentNode?.replaceChild(text, node);
@@ -219,7 +239,19 @@ export const render = (
                             firstNode?.replaceChild(fragment, firstNode);
                         }
                     } else if (Array.isArray(substitution)) {
-                        // ToDo: Implement support
+                        // Todo fix
+                        const newNodes: Node[] = [];
+                        substitution.forEach((item): void => {
+                            if (isTemplateResult(item)) {
+                                const nested = createNodeInstance(item);
+                                newNodes.push(...nested.nodes);
+                            } else {
+                                newNodes.push(
+                                    document.createTextNode(String(item))
+                                );
+                            }
+                        });
+                        console.log(newNodes);
                     } else {
                         part.nodes[0].textContent = String(substitution);
                     }
