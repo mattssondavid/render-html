@@ -116,7 +116,27 @@ const createNodeInstance = (templateResult: TemplateResult): NodeInstance => {
                         lastValue: substitution, // Used for render update
                     });
                 } else if (Array.isArray(substitution)) {
-                    // ToDo: Implement support
+                    const fragment = document.createDocumentFragment();
+                    substitution.forEach((item): void => {
+                        if (isTemplateResult(item)) {
+                            const nestedInstance = createNodeInstance(item);
+                            nestedInstance.nodes.forEach(
+                                (nestedNode: Node): void => {
+                                    fragment.appendChild(nestedNode);
+                                }
+                            );
+                        } else {
+                            const text = document.createTextNode(String(item));
+                            fragment.appendChild(text);
+                        }
+                    });
+                    const childNodes = [...fragment.childNodes];
+                    node.parentNode?.replaceChild(fragment, node);
+                    parts.push({
+                        type: 'text',
+                        nodes: childNodes,
+                        lastValue: substitution, // Used for render update
+                    });
                 } else {
                     const text = document.createTextNode(String(substitution));
                     node.parentNode?.replaceChild(text, node);
@@ -217,9 +237,40 @@ export const render = (
                             );
                             const firstNode = part.nodes[0];
                             firstNode?.replaceChild(fragment, firstNode);
+                            part.nodes = nestedInstance.nodes;
                         }
                     } else if (Array.isArray(substitution)) {
-                        // ToDo: Implement support
+                        if (
+                            part.lastValue &&
+                            Array.isArray(part.lastValue) &&
+                            part.lastValue.length === substitution.length &&
+                            substitution.every(
+                                (value: unknown, index: number): boolean =>
+                                    value ===
+                                    (part.lastValue as unknown[])[index]
+                            )
+                        ) {
+                            break;
+                        }
+                        const fragment = document.createDocumentFragment();
+                        substitution.forEach((item): void => {
+                            if (isTemplateResult(item)) {
+                                const nestedInstance = createNodeInstance(item);
+                                nestedInstance.nodes.forEach(
+                                    (nestedNode: Node): void => {
+                                        fragment.appendChild(nestedNode);
+                                    }
+                                );
+                            } else {
+                                const text = document.createTextNode(
+                                    String(item)
+                                );
+                                fragment.appendChild(text);
+                            }
+                        });
+                        const childNodes = [...fragment.childNodes];
+                        part.nodes[0].parentNode?.replaceChildren(fragment);
+                        part.nodes = childNodes;
                     } else {
                         part.nodes[0].textContent = String(substitution);
                     }
