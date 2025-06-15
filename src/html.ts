@@ -1,4 +1,4 @@
-import { getChildPathToAncesterNode } from './util/node/getChildPathToAncesterNode.ts';
+import { getChildPathToAncesterNode } from './util/node/path/getChildPathToAncesterNode.ts';
 
 type PartMeta = {
     type: 'text' | 'attr' | 'event';

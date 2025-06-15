@@ -1,5 +1,5 @@
 import { isTemplateResult, type TemplateResult } from './html.ts';
-import { getNodeFromPathViaAncesterNode } from './util/node/getNodeFromPathViaAncesterNode.ts';
+import { getNodeFromPathViaAncesterNode } from './util/node/path/getNodeFromPathViaAncesterNode.ts';
 
 type NodeInstance = {
     parent: Node;
