@@ -124,6 +124,11 @@ const escapeRCdata = (text: string): string => {
         .replace(/</g, '&lt;');
 };
 
+type GetHTMLOptions = {
+    readonly serializableShadowRoots?: boolean;
+    readonly shadowRoots?: ShadowRoot[];
+};
+
 /**
  * Serialise HTML fragments
  *
@@ -131,10 +136,14 @@ const escapeRCdata = (text: string): string => {
  *
  * @param {Node} node The node to serialise, where `node` is expected to be
  * either an `Element`, `ShadowRoot` or a `DocumentFragment`
+ * @param {{serializableShadowRoots: boolean, shadowRoots: globalThis.ShadowRoot[]}} options Options
  * @returns {string} The string representing the HTML serialisation of the node
  * @throws {Error} Throws an error if incorrect node argument
  */
-export const serialiseHTMLfragment = (node: Node): string => {
+export const serialiseHTMLfragment = (
+    node: Node,
+    options?: GetHTMLOptions | undefined
+): string => {
     if (
         node.nodeType !== Node.ELEMENT_NODE &&
         node.nodeType !== Node.DOCUMENT_FRAGMENT_NODE
