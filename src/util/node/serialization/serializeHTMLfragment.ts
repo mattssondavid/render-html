@@ -30,6 +30,49 @@ const rawTextElements = new Set(['script', 'style']);
 
 const escapableRawTextElements = new Set(['textarea', 'title']);
 
+/**
+ * Escape attribute data
+ *
+ * Replace `&`, `"`, and `<`.
+ * Only needed for Element node attributes (i.e. attr nodes)
+ *
+ * @eee https://html.spec.whatwg.org/multipage/parsing.html#serialising-html-fragments
+ * @see https://html.spec.whatwg.org/multipage/parsing.html#attribute-value-(double-quoted)-state
+ */
+const escapeAttribute = (value: string): string => {
+    return value
+        .replace(/&/g, '&amp;')
+        .replace(/"/g, '&quot;')
+        .replace(/</g, '&lt;');
+};
+
+/**
+ * Escape `Raw Character` Data
+ *
+ * Replace `<` and `&` as they are start of tags or entities in RC data.
+ * Only needed for escapable raw text Element nodes.
+ *
+ * @see https://html.spec.whatwg.org/multipage/parsing.html#rcdata-state
+ */
+const escapeRCdata = (value: string): string => {
+    return value.replace(/&/g, '&amp;').replace(/</g, '&lt;');
+};
+
+/**
+ * Escape text node value
+ *
+ * Replace `&`, `U+00A0` (the no-break space character), `<`, or `>`
+ *
+ * @see https://html.spec.whatwg.org/multipage/parsing.html#escapingString
+ */
+const escapeText = (value: string): string => {
+    return value
+        .replace(/&/g, '&amp;')
+        .replace(/\u00A0/g, '&nbsp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+};
+
 const serializeNode = (node: Node): string => {
     if (node instanceof globalThis.HTMLTemplateElement) {
         node = node.content; // DocumentFragment
@@ -37,29 +80,28 @@ const serializeNode = (node: Node): string => {
 
     switch (node.nodeType) {
         case Node.ELEMENT_NODE: {
-            const el = node as Element;
-
-            if (obsoleteElements.has(el.tagName.toLowerCase())) {
+            const tag = (node as Element).tagName.toLowerCase();
+            if (obsoleteElements.has(tag)) {
                 // Just skip obsolete elements
                 return '';
             }
 
-            let html = `<${el.tagName.toLowerCase()}`;
-            for (const attr of Array.from(el.attributes)) {
+            let html = `<${tag}`;
+            for (const attr of Array.from((node as Element).attributes)) {
                 html += ` ${attr.name}="${escapeAttribute(attr.value)}"`;
             }
             html += '>';
 
             // Handle voide elements
-            if (voidElements.has(el.tagName.toLowerCase())) {
+            if (voidElements.has(tag)) {
                 return html;
             }
 
             // Serialise children in tree order
-            html += Array.from(el.childNodes)
+            html += Array.from(node.childNodes)
                 .map((child): string => serializeNode(child))
                 .join('');
-            html += `</${el.tagName.toLowerCase()}>`;
+            html += `</${tag}>`;
             return html;
         }
         case Node.TEXT_NODE: {
@@ -94,40 +136,6 @@ const serializeNode = (node: Node): string => {
     }
 };
 
-const escapeAttribute = (value: string): string => {
-    return value
-        .replace(/&/g, '&amp;')
-        .replace(/\u00A0/g, '&nbsp;')
-        .replace(/"/g, '&quot;');
-};
-
-const escapeText = (text: string): string => {
-    return text.replace(/[&<>"']/g, (c): string =>
-        c === '&'
-            ? '&amp;'
-            : c === '<'
-            ? '&lt;'
-            : c === '>'
-            ? '&gt;'
-            : c === '"'
-            ? '&quot;'
-            : c === "'"
-            ? '&#39;'
-            : c
-    );
-};
-
-/**
- *
- * @see https://html.spec.whatwg.org/multipage/parsing.html#rcdata-state
- */
-const escapeRCdata = (text: string): string => {
-    return text
-        .replace(/&/g, '&amp;')
-        .replace(/\u00A0/g, '&nbsp;')
-        .replace(/</g, '&lt;');
-};
-
 type GetHTMLOptions = {
     readonly serializableShadowRoots?: boolean;
     readonly shadowRoots?: ShadowRoot[];
@@ -136,31 +144,70 @@ type GetHTMLOptions = {
 /**
  * Serialise HTML fragments
  *
+ * > "The algorithm serialises the `children` of the `node` being serialized,
+ * not the [actual] node itself."
+ *
  * @see https://html.spec.whatwg.org/multipage/parsing.html#serialising-html-fragments
  *
  * @param {Node} node The node to serialise, where `node` is expected to be
  * either an `Element`, `ShadowRoot` or a `DocumentFragment`
  * @param {{serializableShadowRoots: boolean, shadowRoots: globalThis.ShadowRoot[]}} options Options
  * @returns {string} The string representing the HTML serialisation of the node
- * @throws {Error} Throws an error if incorrect node argument
  */
 export const serializeHTMLfragment = (
     node: Node,
     options?: GetHTMLOptions | undefined
 ): string => {
+    /*
+     * Check for node serialisation as void, i.e the node serialises as a void
+     * element
+     */
     if (
-        node.nodeType !== Node.ELEMENT_NODE &&
-        node.nodeType !== Node.DOCUMENT_FRAGMENT_NODE
+        node.nodeType === Node.ELEMENT_NODE &&
+        (obsoleteElements.has((node as Element).tagName.toLowerCase()) ||
+            voidElements.has((node as Element).tagName.toLowerCase()))
     ) {
-        throw new Error(`Incorrect node type`);
+        return '';
     }
 
-    // ToDO: Implement the real algorithm, for now just do it quick and dirty
-    const fragments = [
-        ...node.childNodes
-            .values()
-            .map((currentNode): string => serializeNode(currentNode)),
-    ];
+    /*
+     * Special handle the `template` element
+     */
+    if (
+        node.nodeType === Node.ELEMENT_NODE &&
+        node instanceof HTMLTemplateElement
+    ) {
+        node = node.content; // DocumentFragment
+    }
 
-    return fragments.join('');
+    let serializeResult = '';
+
+    /*
+     * Process `ShadowHost` node
+     * @see https://dom.spec.whatwg.org/#element-shadow-host
+     */
+    if (
+        node.nodeType === Node.ELEMENT_NODE &&
+        (node as Element).shadowRoot !== null
+    ) {
+        const shadow = (node as Element).shadowRoot!;
+        if (
+            (options?.serializableShadowRoots === true &&
+                shadow.serializable === true) ||
+            options?.shadowRoots?.includes(shadow)
+        ) {
+            const template = `<template shadowrootmode="${shadow.mode}"\
+                ${shadow.delegatesFocus ? 'shadowrootdelegatesfocus=""' : ''}\
+                ${shadow.serializable ? 'shadowrootserializable=""' : ''}\
+                ${shadow.clonable ? 'shadowrootclonable=""' : ''}\
+                ></template>`;
+
+            console.log(template);
+
+            serializeResult += template;
+        }
+    }
+
+    // ... done
+    return serializeResult;
 };
