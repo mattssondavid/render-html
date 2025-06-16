@@ -30,7 +30,11 @@ const rawTextElements = new Set(['script', 'style']);
 
 const escapableRawTextElements = new Set(['textarea', 'title']);
 
-const serialiseNode = (node: Node): string => {
+const serializeNode = (node: Node): string => {
+    if (node instanceof globalThis.HTMLTemplateElement) {
+        node = node.content; // DocumentFragment
+    }
+
     switch (node.nodeType) {
         case Node.ELEMENT_NODE: {
             const el = node as Element;
@@ -53,7 +57,7 @@ const serialiseNode = (node: Node): string => {
 
             // Serialise children in tree order
             html += Array.from(el.childNodes)
-                .map((child): string => serialiseNode(child))
+                .map((child): string => serializeNode(child))
                 .join('');
             html += `</${el.tagName.toLowerCase()}>`;
             return html;
@@ -76,7 +80,7 @@ const serialiseNode = (node: Node): string => {
             return `<!--${(node as Comment).data}-->`;
         case Node.DOCUMENT_FRAGMENT_NODE: {
             return Array.from(node.childNodes)
-                .map((child): string => serialiseNode(child))
+                .map((child): string => serializeNode(child))
                 .join('');
         }
         case Node.DOCUMENT_TYPE_NODE: {
@@ -140,7 +144,7 @@ type GetHTMLOptions = {
  * @returns {string} The string representing the HTML serialisation of the node
  * @throws {Error} Throws an error if incorrect node argument
  */
-export const serialiseHTMLfragment = (
+export const serializeHTMLfragment = (
     node: Node,
     options?: GetHTMLOptions | undefined
 ): string => {
@@ -155,7 +159,7 @@ export const serialiseHTMLfragment = (
     const fragments = [
         ...node.childNodes
             .values()
-            .map((currentNode): string => serialiseNode(currentNode)),
+            .map((currentNode): string => serializeNode(currentNode)),
     ];
 
     return fragments.join('');
