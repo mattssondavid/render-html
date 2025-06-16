@@ -1,3 +1,4 @@
+import '@src/server/shim/shim-dom.ts';
 import { serialiseHTMLfragment } from '@src/util/node/serialisation/serialiseHTMLfragment.ts';
 import { assertEquals } from '@std/assert';
 import { afterEach, beforeAll, describe, it } from '@std/testing/bdd';
