@@ -47,18 +47,16 @@ const patchGlobalThis = (): void => {
      * Patch/Polyfill `globalThis`
      */
     const patchedDOMAPIs = [
-        'document',
         'customElements',
-        'window',
+        'document',
         'DocumentFragment',
         'Element',
         'HTMLElement',
         'HTMLTemplateElement',
         'Node',
-        'ShadowRoot',
-        'DOMParser',
         'NodeFilter',
-        'XMLSerializer',
+        'ShadowRoot',
+        'window',
     ];
     patchedDOMAPIs.forEach((domApi: string): void => {
         Reflect.set<typeof globalThis, string>(
