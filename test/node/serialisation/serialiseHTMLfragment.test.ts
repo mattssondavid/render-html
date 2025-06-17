@@ -122,57 +122,81 @@ describe('serializeHTMLfragment', (): void => {
         document.body.replaceChildren(); // Clear body from element children
     });
 
+    it('can serialise empty element', (): void => {
+        const span = document.createElement('span');
+        assertEquals(serializeHTMLfragment(span), '');
+    });
+
     it('can serialise a single element', (): void => {
+        const p = document.createElement('p');
+        p.textContent = 'Hi';
+        assertEquals(serializeHTMLfragment(p), 'Hi');
+    });
+
+    it('can serialise an element with child', (): void => {
         const container = document.createElement('div');
-        assertEquals(serializeHTMLfragment(container), '<div></div>');
+        const p = document.createElement('p');
+        p.textContent = 'Hi';
+        container.appendChild(p);
+        assertEquals(serializeHTMLfragment(container), '<p>Hi</p>');
     });
 
     it('can serialise an element with attributes', (): void => {
         const container = document.createElement('div');
         container.setAttribute('id', 'hi');
-        assertEquals(serializeHTMLfragment(container), '<div id="hi"></div>');
+        assertEquals(serializeHTMLfragment(container), '');
+    });
+
+    it('can serialise a child element with attribute', (): void => {
+        const container = document.createElement('div');
+        container.setAttribute('id', 'hi');
+        const p = document.createElement('p');
+        p.setAttribute('id', '2');
+        container.appendChild(p);
+        assertEquals(serializeHTMLfragment(container), '<p id="2"></p>');
     });
 
     it('can serialise an element node with attributes requiring escaping', (): void => {
         const container = document.createElement('div');
-        container.setAttribute('text', '1<2');
-        assertEquals(
-            serializeHTMLfragment(container),
-            '<div text="1&lt;2"></div>'
-        );
+        const p = document.createElement('p');
+        p.setAttribute('text', '1<2');
+        container.appendChild(p);
+        assertEquals(serializeHTMLfragment(container), '<p text="1&lt;2"></p>');
     });
 
     it('can serialise nested elements', (): void => {
         const container = document.createElement('div');
-        const child = document.createElement('span');
-        child.textContent = 'Hi';
-        container.appendChild(child);
+        const p = document.createElement('p');
+        const span = document.createElement('span');
+        span.textContent = 'Hi';
+        p.appendChild(span);
+        container.appendChild(p);
         assertEquals(
             serializeHTMLfragment(container),
-            '<div><span>Hi</span></div>'
+            '<p><span>Hi</span></p>'
         );
     });
 
-    it('can serialise text nodes with HTML escaping', (): void => {
+    it('can serialise text node with HTML escaping', (): void => {
         const container = document.createElement('div');
         container.textContent = '1 < 2 & 3 > 2';
         assertEquals(
             serializeHTMLfragment(container),
-            '<div>1 &lt; 2 &amp; 3 &gt; 2</div>'
+            '1 &lt; 2 &amp; 3 &gt; 2'
         );
     });
 
-    it('can serialise text nodes with unicode escaping', (): void => {
+    it('can serialise text node with unicode escaping', (): void => {
         const container = document.createElement('div');
         container.textContent = '1 \u00A0'; // 1 no-break space
-        assertEquals(serializeHTMLfragment(container), '<div>1 &nbsp;</div>');
+        assertEquals(serializeHTMLfragment(container), '1 &nbsp;');
     });
 
-    it('can serialise comment nodes', (): void => {
-        const fragment = document.createDocumentFragment();
+    it('can serialise comment node', (): void => {
+        const container = document.createElement('div');
         const comment = document.createComment('comment');
-        fragment.appendChild(comment);
-        assertEquals(serializeHTMLfragment(fragment), '<!--comment-->');
+        container.appendChild(comment);
+        assertEquals(serializeHTMLfragment(container), '<!--comment-->');
     });
 
     it('can serialise a document fragment with mixed nodes', (): void => {
@@ -188,23 +212,19 @@ describe('serializeHTMLfragment', (): void => {
         );
     });
 
-    it('can serialise empty element', (): void => {
-        const span = document.createElement('span');
-        assertEquals(serializeHTMLfragment(span), '<span></span>');
-    });
-
-    it('can serialise void elements', (): void => {
+    it('can serialise void element', (): void => {
+        const container = document.createElement('div');
         const br = document.createElement('br');
-        assertEquals(serializeHTMLfragment(br), '<br>');
+        container.appendChild(br);
+        assertEquals(serializeHTMLfragment(container), '<br>');
     });
 
     it('can serialise doctype node', (): void => {
         const htmlDocument = document.implementation.createHTMLDocument();
         // <!DOCTYPE html><html><head></head><body></body></html>
-        assertEquals(
-            serializeHTMLfragment(htmlDocument.firstChild!),
-            '<!DOCTYPE html>'
-        );
+        // We only care of the document type onde
+        htmlDocument.removeChild(htmlDocument.lastChild!);
+        assertEquals(serializeHTMLfragment(htmlDocument), '<!DOCTYPE html>');
     });
 
     it('can serialise custom element without options', (): void => {
