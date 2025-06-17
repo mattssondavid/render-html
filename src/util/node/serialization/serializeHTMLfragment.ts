@@ -1,7 +1,26 @@
-/**
+/*
  * Element types
  * @see https://html.spec.whatwg.org/multipage/syntax.html#elements-2
  */
+const obsoleteElements = new Set([
+    'basefont',
+    'bgsound',
+    'frame',
+    'keygen',
+    'param',
+]);
+
+const rawTextElements = new Set([
+    'script',
+    'style',
+    'xmp',
+    'iframe',
+    'noembed',
+    'noframes',
+    'plaintext',
+    'noscript',
+]);
+
 const voidElements = new Set([
     'area',
     'base',
@@ -17,18 +36,6 @@ const voidElements = new Set([
     'track',
     'wbr',
 ]);
-
-const obsoleteElements = new Set([
-    'basefont',
-    'bgsound',
-    'frame',
-    'keygen',
-    'param',
-]);
-
-const rawTextElements = new Set(['script', 'style']);
-
-const escapableRawTextElements = new Set(['textarea', 'title']);
 
 /**
  * Escape attribute data
@@ -47,18 +54,6 @@ const escapeAttribute = (value: string): string => {
 };
 
 /**
- * Escape `Raw Character` Data
- *
- * Replace `<` and `&` as they are start of tags or entities in RC data.
- * Only needed for escapable raw text Element nodes.
- *
- * @see https://html.spec.whatwg.org/multipage/parsing.html#rcdata-state
- */
-const escapeRCdata = (value: string): string => {
-    return value.replace(/&/g, '&amp;').replace(/</g, '&lt;');
-};
-
-/**
  * Escape text node value
  *
  * Replace `&`, `U+00A0` (the no-break space character), `<`, or `>`
@@ -71,69 +66,6 @@ const escapeText = (value: string): string => {
         .replace(/\u00A0/g, '&nbsp;')
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;');
-};
-
-const serializeNode = (node: Node): string => {
-    if (node instanceof globalThis.HTMLTemplateElement) {
-        node = node.content; // DocumentFragment
-    }
-
-    switch (node.nodeType) {
-        case Node.ELEMENT_NODE: {
-            const tag = (node as Element).tagName.toLowerCase();
-            if (obsoleteElements.has(tag)) {
-                // Just skip obsolete elements
-                return '';
-            }
-
-            let html = `<${tag}`;
-            for (const attr of Array.from((node as Element).attributes)) {
-                html += ` ${attr.name}="${escapeAttribute(attr.value)}"`;
-            }
-            html += '>';
-
-            // Handle voide elements
-            if (voidElements.has(tag)) {
-                return html;
-            }
-
-            // Serialise children in tree order
-            html += Array.from(node.childNodes)
-                .map((child): string => serializeNode(child))
-                .join('');
-            html += `</${tag}>`;
-            return html;
-        }
-        case Node.TEXT_NODE: {
-            const parent = node.parentNode;
-            if (parent && parent.nodeType === Node.ELEMENT_NODE) {
-                const tag = (parent as Element).tagName.toLowerCase();
-                if (rawTextElements.has(tag)) {
-                    return node.textContent ?? '';
-                }
-                if (escapableRawTextElements.has(tag)) {
-                    return escapeRCdata(node.textContent ?? '');
-                }
-            }
-            // Anything else
-            return escapeText(node.textContent ?? '');
-        }
-        case Node.COMMENT_NODE:
-            return `<!--${(node as Comment).data}-->`;
-        case Node.DOCUMENT_FRAGMENT_NODE: {
-            return Array.from(node.childNodes)
-                .map((child): string => serializeNode(child))
-                .join('');
-        }
-        case Node.DOCUMENT_TYPE_NODE: {
-            const doctype = node as DocumentType;
-            const parts =
-                `${doctype.name} ${doctype.publicId} ${doctype.systemId}`.trim();
-            return `<!DOCTYPE ${parts}>`.trim();
-        }
-        default:
-            return '';
-    }
 };
 
 type GetHTMLOptions = {
@@ -196,18 +128,95 @@ export const serializeHTMLfragment = (
                 shadow.serializable === true) ||
             options?.shadowRoots?.includes(shadow)
         ) {
-            const template = `<template shadowrootmode="${shadow.mode}"\
-                ${shadow.delegatesFocus ? 'shadowrootdelegatesfocus=""' : ''}\
-                ${shadow.serializable ? 'shadowrootserializable=""' : ''}\
-                ${shadow.clonable ? 'shadowrootclonable=""' : ''}\
-                ></template>`;
-
-            console.log(template);
-
+            const template =
+                `<template shadowrootmode="${shadow.mode}"` +
+                (shadow.delegatesFocus ? ' shadowrootdelegatesfocus=""' : '') +
+                (shadow.serializable ? ' shadowrootserializable=""' : '') +
+                (shadow.clonable ? ' shadowrootclonable=""' : '') +
+                // Skip scoped custom element registry for now, `customElements`
+                // does not currently exist on a `ShadowRoot`
+                '>' +
+                serializeHTMLfragment(shadow, options) +
+                '</template>';
             serializeResult += template;
         }
     }
 
-    // ... done
+    /**
+     * Process each child node
+     */
+    const fragments = Array.from(node.childNodes).map(
+        (currentNode: Node): string => {
+            let fragment;
+            switch (currentNode.nodeType) {
+                case Node.ELEMENT_NODE: {
+                    const tagName = (
+                        currentNode as Element
+                    ).tagName.toLowerCase();
+                    fragment = `<${tagName}`;
+
+                    // Handle attributes
+                    // Skip `is` property, it is a browswer internal value
+                    fragment += [...(currentNode as Element).attributes]
+                        .map(
+                            (attr): string =>
+                                ` ${
+                                    attr.namespaceURI
+                                        ? attr.name
+                                        : attr.localName.toLowerCase()
+                                }="${escapeAttribute(attr.value)}"`
+                        )
+                        .join('');
+
+                    fragment += '>';
+
+                    // Handle void elements
+                    if (
+                        voidElements.has(tagName) ||
+                        obsoleteElements.has(tagName)
+                    ) {
+                        return fragment;
+                    }
+
+                    fragment += serializeHTMLfragment(currentNode, options);
+                    fragment += `</${tagName}>`;
+                    return fragment;
+                }
+
+                case Node.TEXT_NODE: {
+                    const parent = currentNode.parentNode;
+                    if (parent && parent.nodeType === Node.ELEMENT_NODE) {
+                        const tagName = (
+                            parent as Element
+                        ).tagName.toLowerCase();
+                        if (rawTextElements.has(tagName)) {
+                            return (currentNode as Text).data;
+                        }
+                    }
+                    return escapeText((currentNode as Text).data);
+                }
+
+                case Node.COMMENT_NODE: {
+                    return `<!--${(currentNode as Comment).data}-->`;
+                }
+
+                case Node.PROCESSING_INSTRUCTION_NODE: {
+                    return `<?${
+                        (currentNode as ProcessingInstruction).target
+                    } ${(currentNode as ProcessingInstruction).data}>`;
+                }
+
+                case Node.DOCUMENT_TYPE_NODE: {
+                    return `<!DOCTYPE ${(currentNode as DocumentType).name}>`;
+                }
+
+                default: {
+                    return '';
+                }
+            }
+        }
+    );
+    serializeResult += fragments.join('');
+
     return serializeResult;
 };
