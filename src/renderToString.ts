@@ -1,6 +1,6 @@
 import { type TemplateResult } from './html.ts';
 import { render } from './render.ts';
-import { serialiseHTMLfragment } from './util/node/serialisation/serialiseHTMLfragment.ts';
+import { serializeHTMLfragment } from './util/node/serialization/serializeHTMLfragment.ts';
 
 /**
  * Render a HTML Template to a string
@@ -21,6 +21,6 @@ export const renderToString = (
     if (renderer) {
         return renderer(fragment);
     } else {
-        return serialiseHTMLfragment(fragment);
+        return serializeHTMLfragment(fragment);
     }
 };
