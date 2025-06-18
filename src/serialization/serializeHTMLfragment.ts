@@ -1,5 +1,5 @@
 if (typeof Document === 'undefined') {
-    await import('../../../server/shim/shim-dom.ts');
+    await import('../server/shim/shim-dom.ts');
 }
 
 /*

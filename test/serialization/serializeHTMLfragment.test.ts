@@ -1,7 +1,7 @@
 if (typeof Document === 'undefined') {
     await import('@src/server/shim/shim-dom.ts');
 }
-import { serializeHTMLfragment } from '@src/util/node/serialization/serializeHTMLfragment.ts';
+import { serializeHTMLfragment } from '@src/serialization/serializeHTMLfragment.ts';
 import { assertEquals } from '@std/assert';
 import { afterEach, beforeAll, describe, it } from '@std/testing/bdd';
 
