@@ -3,7 +3,7 @@ if (typeof Document === 'undefined') {
 }
 import { type TemplateResult } from './html.ts';
 import { render } from './render.ts';
-import { serializeHTMLfragment } from './util/node/serialization/serializeHTMLfragment.ts';
+import { serializeHTMLfragment } from './serialization/serializeHTMLfragment.ts';
 
 /**
  * Render a HTML Template to a string
