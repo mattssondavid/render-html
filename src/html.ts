@@ -1,3 +1,6 @@
+if (typeof Document === 'undefined') {
+    await import('./server/shim/shim-dom.ts');
+}
 import { getChildPathToAncesterNode } from './util/node/path/getChildPathToAncesterNode.ts';
 
 type PartMeta = {

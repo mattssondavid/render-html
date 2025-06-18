@@ -1,3 +1,6 @@
+if (typeof Document === 'undefined') {
+    await import('./server/shim/shim-dom.ts');
+}
 import { type TemplateResult } from './html.ts';
 import { render } from './render.ts';
 import { serializeHTMLfragment } from './util/node/serialization/serializeHTMLfragment.ts';

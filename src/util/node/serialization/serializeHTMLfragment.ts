@@ -1,3 +1,7 @@
+if (typeof Document === 'undefined') {
+    await import('../../../server/shim/shim-dom.ts');
+}
+
 /*
  * Element types
  * @see https://html.spec.whatwg.org/multipage/syntax.html#elements-2
