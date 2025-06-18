@@ -1,3 +1,6 @@
+if (typeof Document === 'undefined') {
+    await import('./server/shim/shim-dom.ts');
+}
 import { isTemplateResult, type TemplateResult } from './html.ts';
 import { getNodeFromPathViaAncesterNode } from './util/node/path/getNodeFromPathViaAncesterNode.ts';
 
