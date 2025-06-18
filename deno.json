@@ -2,6 +2,9 @@
     "compilerOptions": {
         "lib": ["dom", "dom.iterable", "dom.asynciterable", "deno.ns"]
     },
+    "exports": {
+        ".": "./mod.ts"
+    },
     "fmt": {
         "files": {
             "include": ["./src/"]
