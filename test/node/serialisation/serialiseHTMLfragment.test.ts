@@ -177,6 +177,25 @@ describe('serializeHTMLfragment', (): void => {
         );
     });
 
+    it('can serialise a list', (): void => {
+        const container = document.createElement('div');
+        const ul = document.createElement('ul');
+        [1, 2, 3].forEach((value, index): void => {
+            const li = document.createElement('li');
+            if (index === 1) {
+                li.setAttribute('selected', '');
+            }
+            const text = document.createTextNode(String(value));
+            li.appendChild(text);
+            ul.appendChild(li);
+        });
+        container.appendChild(ul);
+        assertEquals(
+            serializeHTMLfragment(container),
+            '<ul><li>1</li><li selected="">2</li><li>3</li></ul>'
+        );
+    });
+
     it('can serialise text node with HTML escaping', (): void => {
         const container = document.createElement('div');
         container.textContent = '1 < 2 & 3 > 2';
