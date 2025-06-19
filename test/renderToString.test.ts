@@ -166,14 +166,16 @@ describe('renderToString', (): void => {
 
         const template = (): TemplateResult =>
             // prettier-ignore
-            html`<div><serializable-element><p>Hello there</p></serializable-element></div>`;
+            html`<serializable-element><p>Hello there</p></serializable-element>`;
         const expected = `\
-            <template \
-                shadowrootmode="open" \
-                shadowrootserializable="" \
-                ><slot></slot> \
-            </template> \
-            <p>Hello there</p>`
+            <serializable-element>\
+                <template \
+                    shadowrootmode="open" \
+                    shadowrootserializable="" \
+                    ><slot></slot> \
+                </template> \
+                <p>Hello there</p>\
+            </serializable-element>`
             .replaceAll(/\s{2,}/g, ' ')
             .replaceAll(' >', '>')
             .replaceAll('> <', '><')
