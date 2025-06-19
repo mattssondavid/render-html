@@ -4,8 +4,6 @@ if (typeof Document === 'undefined') {
 import { type TemplateResult } from './html.ts';
 import { render } from './render.ts';
 import { serializeHTMLfragment } from './serialization/serializeHTMLfragment.ts';
-import { debugNode } from './util/node/debug/debugNode.ts';
-import { treePrintNode } from './util/node/debug/treePrintNode.ts';
 
 /**
  * Render a HTML Template to a string
@@ -24,12 +22,13 @@ export const renderToString = (
     // Build a node structure with substituted values
     render(templateResult, fragment);
     if (renderer) {
+        // Use custom renderer
         return renderer(fragment);
     } else {
         /**
-         * Check if custom tag element (i.e. a web component)
+         * Check for custom tag elements (i.e. a web component).
+         * If there are some, enable serialising for web components
          */
-        treePrintNode(fragment);
         const customTagPattern = /[a-z]+-[a-z]+/;
         const walker = document.createTreeWalker(
             fragment,
@@ -46,23 +45,18 @@ export const renderToString = (
                 },
             }
         );
-        let serializeOptions:
-            | {
-                  serializableShadowRoots?: boolean;
-                  shadowRoots?: ShadowRoot[];
-              }
-            | undefined = undefined;
-        const options = [];
+        const options: {
+            serializableShadowRoots?: boolean;
+            shadowRoots?: ShadowRoot[];
+        }[] = [];
         while (walker.nextNode()) {
             const element = walker.currentNode as Element;
             const definition = customElements.get(
                 element.tagName.toLowerCase()
             );
-            console.log(debugNode(walker.currentNode), definition);
             if (definition) {
-                // Upgrade element
+                // Upgrade the element
                 customElements.upgrade(element);
-
                 // Set the serialise options
                 if (element.shadowRoot) {
                     // The element is a Shadow Host
@@ -76,11 +70,18 @@ export const renderToString = (
                     // Shadow Host.
                     //
                     // Try to call the `connectedCallback` method of the web
-                    // component as a ShadowRoot might be added/inserted when
-                    // the element is added to the DOM.
-                    const fragment = new DocumentFragment();
+                    // component as a `ShadowRoot` might have been
+                    // added/inserted when the element is added to the DOM, even
+                    // though the spec recommends adding a ShadowRoot, and thus
+                    // convert the web component to a Shadow Host, in the web
+                    // component constructor. The callback is only called if the
+                    // element node is added to a document (i.e if the
+                    // shadow-including root is a document).
+                    // @see https://dom.spec.whatwg.org/#connected
+                    // @see https://html.spec.whatwg.org/multipage/custom-elements.html#custom-element-conformance
+                    const doc = document.implementation.createHTMLDocument();
                     const fakeElement = new definition();
-                    fragment.appendChild(fakeElement);
+                    doc.body.appendChild(fakeElement);
                     if (fakeElement.shadowRoot) {
                         options.push({
                             serializableShadowRoots:
@@ -88,16 +89,22 @@ export const renderToString = (
                                 undefined,
                             shadowRoots: [fakeElement.shadowRoot],
                         });
-                    }
-                    fragment.replaceChildren(); // Clear so garbage collecting
 
-                    // TODO: Does appending the element to a documetn fragment trigger the connected callback??
-                    // If it doesn't then test creating a temporary document via  document.implementation.createHTMLDocument
+                        // Replace the element in the temporary container with
+                        // the fake
+                        fakeElement.append(...element.childNodes);
+                        element.replaceWith(fakeElement);
+                    }
                 }
             }
         }
-        console.log(options);
-        const opt = options.reduce(
+
+        const serializeOptions:
+            | {
+                  serializableShadowRoots?: boolean;
+                  shadowRoots?: ShadowRoot[];
+              }
+            | undefined = options.reduce(
             (
                 accumulator:
                     | {
@@ -109,15 +116,25 @@ export const renderToString = (
                     serializableShadowRoots?: boolean;
                     shadowRoots?: ShadowRoot[];
                 }
-            ):
-                | {
-                      serializableShadowRoots?: boolean;
-                      shadowRoots?: ShadowRoot[];
-                  }
-                | undefined => {
-                console.log(currentValue);
-
-                return currentValue;
+            ): {
+                serializableShadowRoots?: boolean;
+                shadowRoots?: ShadowRoot[];
+            } => {
+                let serializableShadowRoots: boolean | undefined =
+                    currentValue.serializableShadowRoots;
+                if (!serializableShadowRoots) {
+                    // Use previous value instead
+                    serializableShadowRoots =
+                        accumulator?.serializableShadowRoots;
+                }
+                const shadowRoots: ShadowRoot[] = [
+                    ...(accumulator?.shadowRoots ?? []),
+                    ...(currentValue.shadowRoots ?? []),
+                ];
+                return {
+                    serializableShadowRoots,
+                    shadowRoots,
+                };
             },
             undefined
         );
