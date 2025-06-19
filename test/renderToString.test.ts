@@ -100,12 +100,10 @@ describe('renderToString', (): void => {
             // prettier-ignore
             return html`${header}<p>content</p>`;
         };
-        // First render, i.e. first time rendering
         assertEquals(
             renderToString(template('hello world')),
             `<h1>hello world</h1><p>content</p>`
         );
-        // Render update
         assertEquals(
             renderToString(template('hi there')),
             `<h1>hi there</h1><p>content</p>`
@@ -124,7 +122,6 @@ describe('renderToString', (): void => {
             renderToString(template('1', '2')),
             `<h1>1</h1><p>content</p><div>2</div>`
         );
-        // Render update
         assertEquals(
             renderToString(template('1', '3')),
             `<h1>1</h1><p>content</p><div>3</div>`
@@ -137,15 +134,52 @@ describe('renderToString', (): void => {
             // prettier-ignore
             return html`${header}<p id="${attr}">content</p>`;
         };
-        // First render, i.e. first time rendering
         assertEquals(
             renderToString(template('1', 'a1')),
             `<h1>1</h1><p id="a1">content</p>`
         );
-        // Render update
         assertEquals(
             renderToString(template('2', 'a2')),
             `<h1>2</h1><p id="a2">content</p>`
         );
+    });
+
+    it('can handle rendering serializable web component', (): void => {
+        class SerializableElement extends HTMLElement {
+            constructor() {
+                super();
+            }
+
+            connectedCallback(): void {
+                if (!this.shadowRoot) {
+                    const template = document.createElement('template');
+                    template.innerHTML = `<slot></slot>`;
+
+                    this.attachShadow({
+                        mode: 'open',
+                        serializable: true,
+                    }).appendChild(template.content.cloneNode(true));
+                }
+            }
+        }
+        customElements.define('serializable-element', SerializableElement);
+
+        const template = (): TemplateResult =>
+            // prettier-ignore
+            html`<serializable-element><p>Hello there</p></serializable-element>`;
+        const expected = `\
+            <serializable-element>\
+                <template \
+                    shadowrootmode="open" \
+                    shadowrootserializable="" \
+                    ><slot></slot> \
+                </template> \
+                <p>Hello there</p>\
+            </serializable-element>`
+            .replaceAll(/\s{2,}/g, ' ')
+            .replaceAll(' >', '>')
+            .replaceAll('> <', '><')
+            .trim();
+        assertEquals(renderToString(template()), expected);
     });
 });
