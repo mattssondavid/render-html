@@ -6,24 +6,64 @@ import { render } from './render.ts';
 import { serializeHTMLfragment } from './serialization/serializeHTMLfragment.ts';
 
 /**
+ * Options for rendering a DOM node to a string.
+ *
+ * @property renderer - Optional. Custom renderer function for nodes. If provided, will be called for each node.
+ * @property customElements - Optional. Custom element registry to use for resolving/upgrading custom elements.
+ */
+type RenderToStringOptions = {
+    /**
+     * Optional custom renderer to use when rendering the DOM node to string.
+     */
+    renderer?: (node: Node) => string;
+
+    /**
+     * Optional custom element registry to use when checking for custom element
+     * definitions.
+     */
+    customElements?: CustomElementRegistry;
+};
+
+/**
  * Render a HTML Template to a string
  *
  * This can be useful for stattic site generation.
  *
- * @param {TemplateResult} templateResult The template to render
- * @returns {string} The rendered HTML
+ * @param {TemplateResult} templateResult - The template to render
+ * @param {RenderToStringOptions | undefined} options - Render options
+ * @returns {string} The template result rendered to HTML string
  */
 export const renderToString = (
     templateResult: TemplateResult,
-    renderer?: (node: Node) => string
+    options?: RenderToStringOptions
 ): string => {
     // Temporary container
     const fragment = new DocumentFragment();
     // Build a node structure with substituted values
     render(templateResult, fragment);
-    if (renderer) {
+    if (options && options.customElements) {
+        // Use the argument provided custom element registry, which can be
+        // used to pass along externally set web component definitions
+        //
+        // Why replace the own `customElements`? Another approach to get the
+        // external-from-current-global-CustomElementRegistry definitions would
+        // be to load and evaluate script content looking for the custom element
+        // definitions, however, this can cause security risks. If wanting to
+        // load the script it can be done similar to
+        // ```const url = URL.createObjectURL(
+        //     new Blob([scriptContent], {
+        //         type: 'text/javascript',
+        //     })
+        // );
+        // await import(url);
+        // URL.revokeObjectURL(url);
+        // ```
+        // where `scriptContent` is the <script>'s content
+        customElements = options.customElements;
+    }
+    if (options && options.renderer) {
         // Use custom renderer
-        return renderer(fragment);
+        return options.renderer(fragment);
     } else {
         /**
          * Check for custom tag elements (i.e. a web component).
