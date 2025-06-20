@@ -49,9 +49,8 @@ console.log(container.innerHTML); // <p>hi</p>
 #### Render to string
 
 ```ts
-const container = document.createElement('div');
 const template = html`<p>hi</p>`;
-const result = renderToString(template, container);
+const result = renderToString(template);
 console.log(result); // <p>hi</p>
 ```
 
