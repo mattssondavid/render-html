@@ -49,6 +49,7 @@ const patchGlobalThis = (): void => {
     const patchedDOMAPIs = [
         'customElements',
         'document',
+        'Document',
         'DocumentFragment',
         'Element',
         'HTMLElement',
