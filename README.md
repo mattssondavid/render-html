@@ -16,6 +16,21 @@ The project aims to
 
 The `html` acts as a tagged template producing a `TemplateResult` consumable via `render` or `renderToString` as a "dirty check" rendering approach for DOM manipulation.
 
+The `TemplateResult` is defined as
+
+```ts
+{
+    template: HTMLTemplateElement;
+    partMeta: {
+        type: 'text' | 'attr' | 'event';
+        path: number[];
+        attr?: string;
+        event?: string;
+    }[];
+    substitutions: unknown[];
+}
+```
+
 ### Render
 
 The `render` consumes a `TemplateResult` and renders the template into a specified container where placeholder values are replaced with the provided substitutions.
@@ -37,7 +52,7 @@ The `renderToString` consumes a `TemplateResult` and renders the template with p
 
 ### Examples
 
-#### Render
+#### Render to DOM
 
 ```ts
 const container = document.createElement('div');
