@@ -41,7 +41,9 @@ The `renderToString` consumes a `TemplateResult` and renders the template with p
 
 #### Options
 
--   `renderer`: An optional custom renderer to render the `TemplateResult` template node to a string. If not specified then the template node is rendered via an implementation of [Serializing HTML fragments](https://html.spec.whatwg.org/multipage/parsing.html#serialising-html-fragments).
+-   `renderer`: An optional custom renderer to render the `TemplateResult` template node to a string.
+
+    If not specified then the template node is rendered via an implementation of [Serializing HTML fragments](https://html.spec.whatwg.org/multipage/parsing.html#serialising-html-fragments).
 
 -   `customElements`: An optional provided custom element registry to use when checking for web component definitions.
 
