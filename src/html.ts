@@ -185,6 +185,8 @@ const isTemplateCacheEntry = (input: unknown): input is TemplateCacheEntry => {
 
 /**
  * The `TemplateResult`
+ *
+ * @property substitutions - The substitutions
  */
 export type TemplateResult = Readonly<TemplateCacheEntry> & {
     readonly substitutions: unknown[];
@@ -193,7 +195,7 @@ export type TemplateResult = Readonly<TemplateCacheEntry> & {
 /**
  * Check if the input is a TemplateResult
  *
- * @param {any} input The value to check
+ * @param {any} input - The value to check
  * @returns {boolean} True if and only if the input _is_ a `TemplateResult`
  */
 export const isTemplateResult = (input: unknown): input is TemplateResult => {
@@ -212,8 +214,8 @@ export const isTemplateResult = (input: unknown): input is TemplateResult => {
  * to be updated via a `render` function by using a "dirty check" rendering
  * approach for DOM manipulation.
  *
- * @param {TemplateStringsArray} template
- * @param {unknown[]} substitutions
+ * @param {TemplateStringsArray} template - The template to parse
+ * @param {unknown[]} substitutions - The substitutions
  * @returns {TemplateResult} the created Template Result
  */
 export const html = (

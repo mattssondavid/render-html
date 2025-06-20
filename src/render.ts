@@ -164,8 +164,8 @@ const createNodeInstance = (templateResult: TemplateResult): NodeInstance => {
 /**
  * Render a HTML Template Result to a DOM Node
  *
- * @param {TemplateResult} templateResult The template to render
- * @param {Node} container The node to use as a host for the rendered HTML template
+ * @param {TemplateResult} templateResult - The template to render
+ * @param {Node} container - The node to use as a host for the rendered HTML template
  */
 export const render = (
     templateResult: TemplateResult,
