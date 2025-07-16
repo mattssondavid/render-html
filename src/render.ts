@@ -2,30 +2,29 @@ if (typeof Document === 'undefined') {
     await import('./server/shim/shim-dom.ts');
 }
 import { isTemplateResult, type TemplateResult } from './html.ts';
-import { getNodeFromPathViaAncesterNode } from './util/node/path/getNodeFromPathViaAncesterNode.ts';
 
 type NodeInstance = {
     parent: Node;
-    nodes: Node[];
-    parts: Part[];
+    readonly nodes: Node[];
+    readonly parts: Part[];
 };
 
 type Part =
     | {
-          type: 'text';
-          nodes: Node[];
+          readonly type: 'text';
           lastValue: unknown;
+          nodes: Node[];
       }
     | {
-          type: 'attr';
+          readonly type: 'attr';
+          readonly attr: string;
           node: Element;
-          attr: string;
       }
     | {
-          type: 'event';
-          node: Element;
-          event: string;
+          readonly type: 'event';
+          readonly event: string;
           lastEventListener?: EventListener;
+          node: Element;
       };
 
 const nodeInstanceCache = new WeakMap<Node, NodeInstance>();
@@ -43,23 +42,68 @@ const isHandleEventObject = (
 
 const createNodeInstance = (templateResult: TemplateResult): NodeInstance => {
     const parts: Part[] = [];
-    const { template, partMeta, substitutions } = templateResult;
+    const { templateWithPlaceholders, partMeta, substitutions } =
+        templateResult;
+    const template = document.createElement('template');
+    template.innerHTML = templateWithPlaceholders;
     const fragmentRoot = template.content.cloneNode(true);
 
-    // Track nodes to substitute.
-    // When we are actually traversing the `partMeta` then we will do DOM
-    // manipulation which can cause the meta node path to become inaccurate
-    const subsituteNodes = partMeta.map((meta): Node | null =>
-        getNodeFromPathViaAncesterNode(meta.path, fragmentRoot)
-    );
+    /* Map each substitute placeholder to the actual node to replace */
+    const substituteNodes = new Map<string, Node>();
+    const walker = document.createTreeWalker(
+        fragmentRoot,
+        NodeFilter.SHOW_ALL,
+        {
+            // We only care for placeholders in the parsed template
+            //
+            // Note. A TreeWalker will never show the Attr node since its parent
+            // node is always null. Instead, to find the Attr node, we need to
+            // use the `Element.attributes` instead.
+            // Because of this, `NodeFilter.SHOW_COMMENT` cannot be used.
+            acceptNode: (node): number => {
+                // Check for attribute placeholders
+                if (node.nodeType === Node.ELEMENT_NODE) {
+                    const attrs = Array.from((node as Element).attributes);
+                    return attrs.some(
+                        (attr): boolean =>
+                            attr.nodeValue?.includes('$attr-') ||
+                            attr.nodeValue?.includes('$event-') ||
+                            false
+                    )
+                        ? NodeFilter.FILTER_ACCEPT
+                        : NodeFilter.FILTER_SKIP;
+                }
 
-    // Perform initial ("first render") DOM manipulation
-    partMeta.forEach((meta, index): void => {
-        const substitution = substitutions[index];
-        const node = subsituteNodes[index];
-        if (node === null) {
+                // Check for Text placeholder
+                else if (
+                    node.nodeType === Node.COMMENT_NODE &&
+                    node.nodeValue?.includes('$text-')
+                ) {
+                    return NodeFilter.FILTER_ACCEPT;
+                }
+
+                return NodeFilter.FILTER_SKIP;
+            },
+        }
+    );
+    while (walker.nextNode()) {
+        const node = walker.currentNode;
+        if (node.nodeType === Node.ELEMENT_NODE) {
+            for (const attr of Array.from((node as Element).attributes)) {
+                substituteNodes.set(attr.nodeValue!, node);
+            }
+        } else {
+            substituteNodes.set(`<!--${node.nodeValue}-->`, node);
+        }
+    }
+
+    /* Perform initial ("first render") DOM manipulation */
+    partMeta.forEach((meta): void => {
+        const node = substituteNodes.get(meta.substitutionPlaceholder);
+        if (!node) {
             return;
         }
+        const substitution = substitutions[meta.substitutionIndex];
 
         switch (meta.type) {
             case 'attr': {
@@ -77,7 +121,7 @@ const createNodeInstance = (templateResult: TemplateResult): NodeInstance => {
 
             case 'event': {
                 // Check substitution value to determine what to do
-                let eventListener: EventListener | null = null;
+                let eventListener: EventListener | undefined = undefined;
                 if (typeof substitution === 'function') {
                     eventListener = substitution as EventListener;
                 } else if (isHandleEventObject(substitution)) {
@@ -88,13 +132,13 @@ const createNodeInstance = (templateResult: TemplateResult): NodeInstance => {
                         meta.event!,
                         eventListener
                     );
-                    parts.push({
-                        type: 'event',
-                        node: node as Element,
-                        event: meta.event!,
-                        lastEventListener: eventListener,
-                    });
                 }
+                parts.push({
+                    type: 'event',
+                    node: node as Element,
+                    event: meta.event!,
+                    lastEventListener: eventListener,
+                });
                 break;
             }
 
@@ -154,6 +198,8 @@ const createNodeInstance = (templateResult: TemplateResult): NodeInstance => {
         }
     });
 
+    substituteNodes.clear(); // For memory management
+
     return {
         parent: null as unknown as Node,
         nodes: Array.from(fragmentRoot.childNodes),
@@ -179,108 +225,119 @@ export const render = (
             instance.parent.appendChild(node);
         }
         nodeInstanceCache.set(container, instance);
-    } else {
-        // Update with new subsitution values
-        const instance = nodeInstanceCache.get(container);
-        instance?.parts.forEach((part, index): void => {
-            const substitution = templateResult.substitutions[index];
-            switch (part.type) {
-                case 'attr': {
-                    part.node.setAttribute(part.attr, String(substitution));
+        return;
+    }
+    // Update with new subsitution values
+    const { parts } = nodeInstanceCache.get(container)!;
+
+    templateResult.partMeta.forEach((meta, index): void => {
+        const part = parts[index];
+        const substitution =
+            templateResult.substitutions[meta.substitutionIndex];
+        switch (part.type) {
+            case 'attr': {
+                part.node.setAttribute(part.attr, String(substitution));
+                break;
+            }
+
+            case 'event': {
+                let eventListener: EventListener | undefined = undefined;
+                if (typeof substitution === 'function') {
+                    eventListener = substitution as EventListener;
+                } else if (isHandleEventObject(substitution)) {
+                    eventListener = substitution.handleEvent as EventListener;
+                }
+                if (part.lastEventListener) {
+                    part.node.removeEventListener(
+                        part.event,
+                        part.lastEventListener
+                    );
+                }
+                if (eventListener) {
+                    part.node.addEventListener(part.event, eventListener);
+                }
+                part.lastEventListener = eventListener;
+                break;
+            }
+
+            case 'text': {
+                if (substitution === part.lastValue) {
+                    // No changes
                     break;
                 }
 
-                case 'event': {
-                    let eventListener: EventListener | null = null;
-                    if (typeof substitution === 'function') {
-                        eventListener = substitution as EventListener;
-                    } else if (isHandleEventObject(substitution)) {
-                        eventListener =
-                            substitution.handleEvent as EventListener;
-                    }
-                    if (part.lastEventListener) {
-                        part.node.removeEventListener(
-                            part.event,
-                            part.lastEventListener
+                if (isTemplateResult(substitution)) {
+                    if (isTemplateResult(part.lastValue)) {
+                        // Recursively update
+                        const nestedInstance = createNodeInstance(
+                            part.lastValue
                         );
+                        render(
+                            substitution,
+                            nestedInstance.parent ?? part.nodes[0].parentNode!
+                        );
+                    } else {
+                        // Replace nodes
+                        const nestedInstance = createNodeInstance(substitution);
+                        const fragment = document.createDocumentFragment();
+                        nestedInstance.nodes.forEach(
+                            (nestedNode: Node): void => {
+                                fragment.appendChild(nestedNode);
+                            }
+                        );
+                        const firstNode = part.nodes[0];
+                        if (firstNode && firstNode.parentNode) {
+                            firstNode.parentNode.replaceChild(
+                                fragment,
+                                firstNode
+                            );
+                            part.nodes = nestedInstance.nodes;
+                        }
                     }
-                    if (eventListener) {
-                        part.node.addEventListener(part.event, eventListener);
-                        part.lastEventListener = eventListener;
-                    }
-                    break;
-                }
-
-                case 'text': {
-                    if (substitution === part.lastValue) {
-                        // No changes
+                } else if (Array.isArray(substitution)) {
+                    if (
+                        part.lastValue &&
+                        Array.isArray(part.lastValue) &&
+                        part.lastValue.length === substitution.length &&
+                        substitution.every(
+                            (value: unknown, index: number): boolean =>
+                                value === (part.lastValue as unknown[])[index]
+                        )
+                    ) {
                         break;
                     }
-
-                    if (isTemplateResult(substitution)) {
-                        if (isTemplateResult(part.lastValue)) {
-                            // Recursively update
-                            const nestedInstance = createNodeInstance(
-                                part.lastValue
-                            );
-                            render(
-                                substitution,
-                                nestedInstance.parent ??
-                                    part.nodes[0].parentNode!
-                            );
-                        } else {
-                            // Replace nodes
-                            const nestedInstance =
-                                createNodeInstance(substitution);
-                            const fragment = document.createDocumentFragment();
+                    const fragment = document.createDocumentFragment();
+                    substitution.forEach((item): void => {
+                        if (isTemplateResult(item)) {
+                            const nestedInstance = createNodeInstance(item);
                             nestedInstance.nodes.forEach(
                                 (nestedNode: Node): void => {
                                     fragment.appendChild(nestedNode);
                                 }
                             );
-                            const firstNode = part.nodes[0];
-                            firstNode?.replaceChild(fragment, firstNode);
-                            part.nodes = nestedInstance.nodes;
+                        } else {
+                            const text = document.createTextNode(String(item));
+                            fragment.appendChild(text);
                         }
-                    } else if (Array.isArray(substitution)) {
-                        if (
-                            part.lastValue &&
-                            Array.isArray(part.lastValue) &&
-                            part.lastValue.length === substitution.length &&
-                            substitution.every(
-                                (value: unknown, index: number): boolean =>
-                                    value ===
-                                    (part.lastValue as unknown[])[index]
-                            )
-                        ) {
-                            break;
-                        }
-                        const fragment = document.createDocumentFragment();
-                        substitution.forEach((item): void => {
-                            if (isTemplateResult(item)) {
-                                const nestedInstance = createNodeInstance(item);
-                                nestedInstance.nodes.forEach(
-                                    (nestedNode: Node): void => {
-                                        fragment.appendChild(nestedNode);
-                                    }
-                                );
-                            } else {
-                                const text = document.createTextNode(
-                                    String(item)
-                                );
-                                fragment.appendChild(text);
+                    });
+                    if (part.nodes[0] && part.nodes[0].parentNode) {
+                        const parent = part.nodes[0].parentNode;
+                        parent.insertBefore(fragment, part.nodes[0]);
+                        for (const oldNode of part.nodes) {
+                            if (oldNode) {
+                                parent.removeChild(oldNode);
                             }
-                        });
-                        const childNodes = [...fragment.childNodes];
-                        part.nodes[0].parentNode?.replaceChildren(fragment);
-                        part.nodes = childNodes;
-                    } else {
+                        }
+                        part.nodes = [...fragment.childNodes];
+                    }
+                } else {
+                    if (part.nodes && part.nodes[0]) {
                         part.nodes[0].textContent = String(substitution);
                     }
-                    part.lastValue = substitution;
-                    break;
                 }
+                part.lastValue = substitution;
+                break;
             }
-        });
-    }
+        }
+    });
 };

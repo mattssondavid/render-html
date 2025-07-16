@@ -162,7 +162,9 @@ describe('renderToString', (): void => {
                 }
             }
         }
-        customElements.define('serializable-element', SerializableElement);
+        if (!customElements.get('serializable-element')) {
+            customElements.define('serializable-element', SerializableElement);
+        }
 
         const template = (): TemplateResult =>
             // prettier-ignore
@@ -181,5 +183,101 @@ describe('renderToString', (): void => {
             .replaceAll('> <', '><')
             .trim();
         assertEquals(renderToString(template()), expected);
+    });
+
+    it('can handle document rendering', (): void => {
+        const template = (lang: string, title: string): TemplateResult =>
+            html`<!DOCTYPE html>
+                <html lang="${lang}">
+                    <head>
+                        <meta
+                            http-equiv="content-Type"
+                            content="text/html; charset=UTF-8"
+                        />
+                        <meta
+                            name="viewport"
+                            content="width=device-width, initial-scale=1"
+                        />
+                        <title>${title}</title>
+                    </head>
+                    <body></body>
+                </html>`;
+        const actual = renderToString(template('en', 'test'))
+            .split('\n')
+            .map((line): string => line.trim())
+            .filter((line): boolean => line.length > 0);
+        const expected = [
+            '<!DOCTYPE html><html lang="en"><head>',
+            '<meta http-equiv="content-Type" content="text/html; charset=UTF-8">',
+            '<meta name="viewport" content="width=device-width, initial-scale=1">',
+            '<title>test</title>',
+            '</head>',
+            '<body>',
+            '</body></html>',
+        ];
+        assertEquals(actual, expected);
+    });
+
+    it('can handle document rendering with serializable web element', (): void => {
+        class SerializableElement extends HTMLElement {
+            constructor() {
+                super();
+            }
+
+            connectedCallback(): void {
+                if (!this.shadowRoot) {
+                    const template = document.createElement('template');
+                    template.innerHTML = `<slot></slot>`;
+
+                    this.attachShadow({
+                        mode: 'open',
+                        serializable: true,
+                    }).appendChild(template.content.cloneNode(true));
+                }
+            }
+        }
+        if (!customElements.get('serializable-element')) {
+            customElements.define('serializable-element', SerializableElement);
+        }
+
+        const template = (lang: string, title: string): TemplateResult =>
+            // prettier-ignore
+            html`<!DOCTYPE html>
+                <html lang="${lang}">
+                    <head>
+                        <meta
+                            http-equiv="content-Type"
+                            content="text/html; charset=UTF-8"
+                        />
+                        <meta
+                            name="viewport"
+                            content="width=device-width, initial-scale=1"
+                        />
+                        <title>${title}</title>
+                    </head>
+                    <body>
+                        <serializable-element>
+                            <p>Hello there</p>
+                        </serializable-element>
+                    </body>
+                </html>`;
+        const actual = renderToString(template('en', 'test'))
+            .split('\n')
+            .map((line): string => line.trim())
+            .filter((line): boolean => line.length > 0);
+        const expected = [
+            '<!DOCTYPE html><html lang="en"><head>',
+            '<meta http-equiv="content-Type" content="text/html; charset=UTF-8">',
+            '<meta name="viewport" content="width=device-width, initial-scale=1">',
+            '<title>test</title>',
+            '</head>',
+            '<body>',
+            '<serializable-element><template shadowrootmode="open" ' +
+                'shadowrootserializable=""><slot></slot></template>',
+            '<p>Hello there</p>',
+            '</serializable-element>',
+            '</body></html>',
+        ];
+        assertEquals(actual, expected);
     });
 });
