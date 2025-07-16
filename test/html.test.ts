@@ -1,6 +1,3 @@
-if (typeof Document === 'undefined') {
-    await import('@src/server/shim/shim-dom.ts');
-}
 import { html, type TemplateResult } from '@src/html.ts';
 import { assertEquals } from '@std/assert';
 import { describe, it } from '@std/testing/bdd';
@@ -12,7 +9,7 @@ describe('html', (): void => {
         assertEquals(actual.partMeta, [], 'partMeta mismatch');
         assertEquals(actual.substitutions, [], 'substitutions mismatch');
         assertEquals(
-            actual.template.innerHTML,
+            actual.templateWithPlaceholders,
             `<p>hi</p>`,
             'template mismatch'
         );
@@ -26,7 +23,7 @@ describe('html', (): void => {
         assertEquals(actual.partMeta, [], 'partMeta mismatch');
         assertEquals(actual.substitutions, [], 'substitutions mismatch');
         assertEquals(
-            actual.template.innerHTML,
+            actual.templateWithPlaceholders,
             `<article><h2>Hi</h2><p>Hello world</p></article>`,
             'template mismatch'
         );
@@ -39,13 +36,19 @@ describe('html', (): void => {
         const actual = template('hi');
         assertEquals(
             actual.partMeta,
-            [{ path: [0, 0], type: 'text' }],
+            [
+                {
+                    type: 'text',
+                    substitutionPlaceholder: '<!--$text-0$-->',
+                    substitutionIndex: 0,
+                },
+            ],
             'partMeta mismatch'
         );
         assertEquals(actual.substitutions, ['hi'], 'substitutions mismatch');
         assertEquals(
-            actual.template.innerHTML,
-            '<p><!--$text$--></p>',
+            actual.templateWithPlaceholders,
+            '<p><!--$text-0$--></p>',
             'template mismatch'
         );
     });
@@ -58,8 +61,16 @@ describe('html', (): void => {
         assertEquals(
             actual.partMeta,
             [
-                { path: [0, 0, 0], type: 'text' },
-                { path: [0, 1, 0], type: 'text' },
+                {
+                    type: 'text',
+                    substitutionPlaceholder: '<!--$text-0$-->',
+                    substitutionIndex: 0,
+                },
+                {
+                    type: 'text',
+                    substitutionPlaceholder: '<!--$text-1$-->',
+                    substitutionIndex: 1,
+                },
             ],
             'partMeta mismatch'
         );
@@ -69,8 +80,8 @@ describe('html', (): void => {
             'substitutions mismatch'
         );
         assertEquals(
-            actual.template.innerHTML,
-            '<article><h2><!--$text$--></h2><p><!--$text$--></p></article>',
+            actual.templateWithPlaceholders,
+            '<article><h2><!--$text-0$--></h2><p><!--$text-1$--></p></article>',
             'template mismatch'
         );
     });
@@ -83,8 +94,16 @@ describe('html', (): void => {
         assertEquals(
             actual.partMeta,
             [
-                { path: [0, 0], type: 'text' },
-                { path: [1, 0], type: 'text' },
+                {
+                    type: 'text',
+                    substitutionPlaceholder: '<!--$text-0$-->',
+                    substitutionIndex: 0,
+                },
+                {
+                    type: 'text',
+                    substitutionPlaceholder: '<!--$text-1$-->',
+                    substitutionIndex: 1,
+                },
             ],
             'partMeta mismatch'
         );
@@ -94,8 +113,8 @@ describe('html', (): void => {
             'substitutions mismatch'
         );
         assertEquals(
-            actual.template.innerHTML,
-            '<article><!--$text$--></article><article><!--$text$--></article>',
+            actual.templateWithPlaceholders,
+            '<article><!--$text-0$--></article><article><!--$text-1$--></article>',
             'template mismatch'
         );
     });
@@ -107,7 +126,13 @@ describe('html', (): void => {
         const actualOne = template(1);
         assertEquals(
             actualOne.partMeta,
-            [{ path: [0, 0], type: 'text' }],
+            [
+                {
+                    type: 'text',
+                    substitutionPlaceholder: '<!--$text-0$-->',
+                    substitutionIndex: 0,
+                },
+            ],
             'partMeta mismatch for actualOne'
         );
         assertEquals(
@@ -116,15 +141,21 @@ describe('html', (): void => {
             'substitutions mismatch for actualOne'
         );
         assertEquals(
-            actualOne.template.innerHTML,
-            '<div><!--$text$--></div>',
+            actualOne.templateWithPlaceholders,
+            '<div><!--$text-0$--></div>',
             'template mismatch for actualOne'
         );
 
         const actualTwo = template(2);
         assertEquals(
             actualTwo.partMeta,
-            [{ path: [0, 0], type: 'text' }],
+            [
+                {
+                    type: 'text',
+                    substitutionPlaceholder: '<!--$text-0$-->',
+                    substitutionIndex: 0,
+                },
+            ],
             'partMeta mismatch for actualTwo'
         );
         assertEquals(
@@ -133,8 +164,8 @@ describe('html', (): void => {
             'substitutions mismatch for actualTwo'
         );
         assertEquals(
-            actualTwo.template.innerHTML,
-            '<div><!--$text$--></div>',
+            actualTwo.templateWithPlaceholders,
+            '<div><!--$text-0$--></div>',
             'template mismatch for actualTwo'
         );
     });
@@ -146,13 +177,20 @@ describe('html', (): void => {
         const actual = template(1);
         assertEquals(
             actual.partMeta,
-            [{ attr: 'id', path: [0], type: 'attr' }],
+            [
+                {
+                    type: 'attr',
+                    attr: 'id',
+                    substitutionPlaceholder: '<!--$attr-0$-->',
+                    substitutionIndex: 0,
+                },
+            ],
             'partMeta mismatch'
         );
         assertEquals(actual.substitutions, [1], 'substitutions mismatch');
         assertEquals(
-            actual.template.innerHTML,
-            '<div id="<!--$attr$-->">hi</div>',
+            actual.templateWithPlaceholders,
+            '<div id="<!--$attr-0$-->">hi</div>',
             'template mismatch'
         );
     });
@@ -164,13 +202,20 @@ describe('html', (): void => {
         const actual = template(1);
         assertEquals(
             actual.partMeta,
-            [{ attr: 'data-id', path: [0], type: 'attr' }],
+            [
+                {
+                    type: 'attr',
+                    attr: 'data-id',
+                    substitutionPlaceholder: '<!--$attr-0$-->',
+                    substitutionIndex: 0,
+                },
+            ],
             'partMeta mismatch'
         );
         assertEquals(actual.substitutions, [1], 'substitutions mismatch');
         assertEquals(
-            actual.template.innerHTML,
-            '<div data-id="<!--$attr$-->">hi</div>',
+            actual.templateWithPlaceholders,
+            '<div data-id="<!--$attr-0$-->">hi</div>',
             'template mismatch'
         );
     });
@@ -183,7 +228,14 @@ describe('html', (): void => {
         const actual = template(eventHandler);
         assertEquals(
             actual.partMeta,
-            [{ event: 'click', path: [0], type: 'event' }],
+            [
+                {
+                    event: 'click',
+                    substitutionPlaceholder: '<!--$event-0$-->',
+                    substitutionIndex: 0,
+                    type: 'event',
+                },
+            ],
             'partMeta mismatch'
         );
         assertEquals(
@@ -192,8 +244,8 @@ describe('html', (): void => {
             'substitutions mismatch'
         );
         assertEquals(
-            actual.template.innerHTML,
-            '<button>Hi</button>',
+            actual.templateWithPlaceholders,
+            '<button onclick="<!--$event-0$-->">Hi</button>',
             'template mismatch'
         );
     });
@@ -208,7 +260,14 @@ describe('html', (): void => {
         const actualOne = template(eventHandler);
         assertEquals(
             actualOne.partMeta,
-            [{ event: 'click', path: [0], type: 'event' }],
+            [
+                {
+                    event: 'click',
+                    substitutionPlaceholder: '<!--$event-0$-->',
+                    substitutionIndex: 0,
+                    type: 'event',
+                },
+            ],
             'partMeta mismatch for actualOne'
         );
         assertEquals(
@@ -217,15 +276,21 @@ describe('html', (): void => {
             'substitutions mismatch for actualOne'
         );
         assertEquals(
-            actualOne.template.innerHTML,
-            '<button>Hi</button>',
+            actualOne.templateWithPlaceholders,
+            '<button onclick="<!--$event-0$-->">Hi</button>',
             'template mismatch for actualOne'
         );
-
         const actualTwo = template(eventHandler);
         assertEquals(
             actualTwo.partMeta,
-            [{ event: 'click', path: [0], type: 'event' }],
+            [
+                {
+                    event: 'click',
+                    substitutionPlaceholder: '<!--$event-0$-->',
+                    substitutionIndex: 0,
+                    type: 'event',
+                },
+            ],
             'partMeta mismatch for actualTwo'
         );
         assertEquals(
@@ -234,11 +299,10 @@ describe('html', (): void => {
             'substitutions mismatch for actualTwo'
         );
         assertEquals(
-            actualTwo.template.innerHTML,
-            '<button>Hi</button>',
+            actualTwo.templateWithPlaceholders,
+            '<button onclick="<!--$event-0$-->">Hi</button>',
             'template mismatch for actualTwo'
         );
-
         const eventHandlerThree = {
             handleEvent: (): void => {},
         };
@@ -246,7 +310,14 @@ describe('html', (): void => {
         const actualThree = template(eventHandlerThree);
         assertEquals(
             actualThree.partMeta,
-            [{ event: 'click', path: [0], type: 'event' }],
+            [
+                {
+                    event: 'click',
+                    substitutionPlaceholder: '<!--$event-0$-->',
+                    substitutionIndex: 0,
+                    type: 'event',
+                },
+            ],
             'partMeta mismatch for actualThree'
         );
         assertEquals(
@@ -255,8 +326,8 @@ describe('html', (): void => {
             'substitutions mismatch for actualThree'
         );
         assertEquals(
-            actualThree.template.innerHTML,
-            '<button>Hi</button>',
+            actualThree.templateWithPlaceholders,
+            '<button onclick="<!--$event-0$-->">Hi</button>',
             'template mismatch for actualThree'
         );
     });
@@ -270,48 +341,71 @@ describe('html', (): void => {
         const actualOne = template('hello world');
         assertEquals(
             actualOne.partMeta,
-            [{ path: [0], type: 'text' }],
+            [
+                {
+                    type: 'text',
+                    substitutionPlaceholder: '<!--$text-0$-->',
+                    substitutionIndex: 0,
+                },
+            ],
             'partMeta mismatch for actualOne'
         );
-        // ToDo fix this assert
-        // assertEquals(
-        //     actualOne.substitutions,
-        //     [
-        //         {
-        //             partMeta: [{ path: [0, 0], type: 'text' }],
-        //             substitutions: ['hello world'],
-        //             template: new HTMLTemplateElement(),
-        //         },
-        //     ],
-        //     'substitutions mismatch for actualOne'
-        // );
         assertEquals(
-            actualOne.template.innerHTML,
-            '<!--$text$--><p>content</p>',
+            actualOne.substitutions,
+            [
+                {
+                    partMeta: [
+                        {
+                            type: 'text',
+                            substitutionPlaceholder: '<!--$text-0$-->',
+                            substitutionIndex: 0,
+                        },
+                    ],
+                    substitutions: ['hello world'],
+                    templateStrings: ['<h1>', '</h1>'],
+                    templateWithPlaceholders: '<h1><!--$text-0$--></h1>',
+                },
+            ],
+            'substitutions mismatch for actualOne'
+        );
+        assertEquals(
+            actualOne.templateWithPlaceholders,
+            '<!--$text-0$--><p>content</p>',
             'template mismatch for actualOne'
         );
-
         const actualTwo = template('hi there');
         assertEquals(
             actualTwo.partMeta,
-            [{ path: [0], type: 'text' }],
+            [
+                {
+                    type: 'text',
+                    substitutionPlaceholder: '<!--$text-0$-->',
+                    substitutionIndex: 0,
+                },
+            ],
             'partMeta mismatch for actualTwo'
         );
-        // ToDo fix this assert
-        // assertEquals(
-        //     actualTwo.substitutions,
-        //     [
-        //         {
-        //             partMeta: [{ path: [0, 0], type: 'text' }],
-        //             substitutions: ['hi there'],
-        //             template: new HTMLTemplateElement(),
-        //         },
-        //     ],
-        //     'substitutions mismatch for actualTwo'
-        // );
         assertEquals(
-            actualTwo.template.innerHTML,
-            '<!--$text$--><p>content</p>',
+            actualTwo.substitutions,
+            [
+                {
+                    partMeta: [
+                        {
+                            type: 'text',
+                            substitutionPlaceholder: '<!--$text-0$-->',
+                            substitutionIndex: 0,
+                        },
+                    ],
+                    substitutions: ['hi there'],
+                    templateStrings: ['<h1>', '</h1>'],
+                    templateWithPlaceholders: '<h1><!--$text-0$--></h1>',
+                },
+            ],
+            'substitutions mismatch for actualTwo'
+        );
+        assertEquals(
+            actualTwo.templateWithPlaceholders,
+            '<!--$text-0$--><p>content</p>',
             'template mismatch for actualTwo'
         );
     });
@@ -326,16 +420,104 @@ describe('html', (): void => {
         assertEquals(
             actual.partMeta,
             [
-                { path: [0], type: 'text' },
-                { attr: 'id', path: [1], type: 'attr' },
+                {
+                    type: 'text',
+                    substitutionPlaceholder: '<!--$text-0$-->',
+                    substitutionIndex: 0,
+                },
+                {
+                    type: 'attr',
+                    attr: 'id',
+                    substitutionPlaceholder: '<!--$attr-1$-->',
+                    substitutionIndex: 1,
+                },
             ],
             'partMeta mismatch'
         );
-        // ToDo fix this assert
-        // assertEquals(actual.substitutions, [1, 'a1'], 'substitutions mismatch');
         assertEquals(
-            actual.template.innerHTML,
-            '<!--$text$--><p id="<!--$attr$-->">content</p>',
+            actual.substitutions,
+            [
+                {
+                    partMeta: [
+                        {
+                            substitutionIndex: 0,
+                            substitutionPlaceholder: '<!--$text-0$-->',
+                            type: 'text',
+                        },
+                    ],
+                    substitutions: ['1'],
+                    templateStrings: ['<h1>', '</h1>'],
+                    templateWithPlaceholders: '<h1><!--$text-0$--></h1>',
+                },
+
+                'a1',
+            ],
+            'substitutions mismatch'
+        );
+        assertEquals(
+            actual.templateWithPlaceholders,
+            '<!--$text-0$--><p id="<!--$attr-1$-->">content</p>',
+            'template mismatch'
+        );
+    });
+
+    it('can handle multiple lines', (): void => {
+        const template = (lang: string, title: string): TemplateResult =>
+            html`<!DOCTYPE html>
+                <html lang="${lang}">
+                    <head>
+                        <meta
+                            http-equiv="content-Type"
+                            content="text/html; charset=UTF-8"
+                        />
+                        <meta
+                            name="viewport"
+                            content="width=device-width, initial-scale=1"
+                        />
+                        <title>${title}</title>
+                    </head>
+                    <body></body>
+                </html>`;
+        const actual = template('en', 'test');
+        assertEquals(
+            actual.partMeta,
+            [
+                {
+                    attr: 'lang',
+                    substitutionIndex: 0,
+                    substitutionPlaceholder: '<!--$attr-0$-->',
+                    type: 'attr',
+                },
+                {
+                    substitutionIndex: 1,
+                    substitutionPlaceholder: '<!--$text-1$-->',
+                    type: 'text',
+                },
+            ],
+            'partMeta mismatch'
+        );
+        assertEquals(
+            actual.substitutions,
+            ['en', 'test'],
+            'substitutions mismatch'
+        );
+        assertEquals(
+            actual.templateWithPlaceholders,
+            `<!DOCTYPE html>
+                <html lang="<!--$attr-0$-->">
+                    <head>
+                        <meta
+                            http-equiv="content-Type"
+                            content="text/html; charset=UTF-8"
+                        />
+                        <meta
+                            name="viewport"
+                            content="width=device-width, initial-scale=1"
+                        />
+                        <title><!--$text-1$--></title>
+                    </head>
+                    <body></body>
+                </html>`,
             'template mismatch'
         );
     });

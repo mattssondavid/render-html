@@ -20,13 +20,15 @@ The `TemplateResult` is defined as
 
 ```ts
 {
-    template: HTMLTemplateElement;
     partMeta: {
         type: 'text' | 'attr' | 'event';
-        path: number[];
         attr?: string;
         event?: string;
+        substitutionIndex: number;
+        substitutionPlaceholder: string;
     }[];
+    templateStrings: TemplateStringsArray;
+    templateWithPlaceholders: string;
     substitutions: unknown[];
 }
 ```

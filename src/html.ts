@@ -1,23 +1,20 @@
-if (typeof Document === 'undefined') {
-    await import('./server/shim/shim-dom.ts');
-}
-import { getChildPathToAncesterNode } from './util/node/path/getChildPathToAncesterNode.ts';
-
 type PartMeta = {
-    type: 'text' | 'attr' | 'event';
-    path: number[];
-    attr?: string;
-    event?: string;
+    readonly type: 'text' | 'attr' | 'event';
+    readonly attr?: string;
+    readonly event?: string;
+    readonly substitutionIndex: number;
+    readonly substitutionPlaceholder: string;
 };
 
 type TemplateCacheEntry = {
-    template: HTMLTemplateElement;
-    partMeta: PartMeta[];
+    readonly partMeta: PartMeta[];
+    readonly templateStrings: TemplateStringsArray;
+    readonly templateWithPlaceholders: string;
 };
 
 const templateCache = new WeakMap<TemplateStringsArray, TemplateCacheEntry>();
 
-const createTempleCacheEntry = (
+const createTemplateCacheEntry = (
     templateStrings: TemplateStringsArray
 ): TemplateCacheEntry => {
     /*
@@ -25,106 +22,51 @@ const createTempleCacheEntry = (
      *
      * Find substitution holes and mark each as a placeholder
      */
-    let html = '';
-    const reIsAttribute = /(\S+)=["']?/;
+    const htmlChunks: string[] = [];
+    const partMeta: PartMeta[] = [];
+    const reIsAttribute = /([^\s=>\/]+)\s*=\s*(['"])?[^'"]*$/;
     const reIsEvent = /^on\w+$/i;
-
     templateStrings.forEach((templateItem, index): void => {
-        html += templateItem;
+        let substitutionPlaceholder = '';
+        htmlChunks.push(templateItem);
         if (index < templateStrings.length - 1) {
             const attributeMatch = templateItem.match(reIsAttribute);
             if (attributeMatch) {
-                html += reIsEvent.test(attributeMatch[1])
-                    ? '<!--$event$-->'
-                    : '<!--$attr$-->';
+                const attrName = attributeMatch[1];
+                if (reIsEvent.test(attrName)) {
+                    substitutionPlaceholder = `<!--$event-${index}$-->`;
+                    partMeta.push({
+                        type: 'event',
+                        event: attrName.slice(2).toLowerCase(), // Remove the "on" prefix
+                        substitutionPlaceholder,
+                        substitutionIndex: index,
+                    });
+                } else {
+                    substitutionPlaceholder = `<!--$attr-${index}$-->`;
+                    partMeta.push({
+                        type: 'attr',
+                        attr: attrName,
+                        substitutionPlaceholder,
+                        substitutionIndex: index,
+                    });
+                }
             } else {
                 // The part must be a text node
-                html += '<!--$text$-->';
+                substitutionPlaceholder = `<!--$text-${index}$-->`;
+                partMeta.push({
+                    type: 'text',
+                    substitutionPlaceholder,
+                    substitutionIndex: index,
+                });
             }
+            htmlChunks.push(substitutionPlaceholder);
         }
     });
 
-    const template = document.createElement('template');
-    template.innerHTML = html.trim();
-
-    /*
-     * Find all substitution placeholders
-     */
-    const partMeta: PartMeta[] = [];
-
-    const walker = document.createTreeWalker(
-        template.content,
-        NodeFilter.SHOW_ALL,
-        {
-            // We only care for placeholders in the parsed template
-            //
-            // Note. A TreeWalker will never show the Attr node since its parent
-            // node is always null. Instead, to find the Attr node, we need to
-            // use the `Element.attributes` instead.
-            // Because of this, `NodeFilter.SHOW_COMMENT` cannot be used.
-            acceptNode: (node): number => {
-                // Check for attribute placeholders
-                if (node.nodeType === Node.ELEMENT_NODE) {
-                    const attrNodes = Array.from((node as Element).attributes);
-                    const acceptance = attrNodes.map(
-                        (attr): boolean =>
-                            attr.nodeValue === '<!--$attr$-->' ||
-                            attr.nodeValue === '<!--$event$-->'
-                    );
-                    if (acceptance.some(Boolean)) {
-                        return NodeFilter.FILTER_ACCEPT;
-                    }
-                }
-
-                // Check for Text placeholder
-                else if (node.nodeValue === '$text$') {
-                    return NodeFilter.FILTER_ACCEPT;
-                }
-
-                return NodeFilter.FILTER_SKIP;
-            },
-        }
-    );
-
-    while (walker.nextNode()) {
-        const node = walker.currentNode;
-        const path = getChildPathToAncesterNode(node, template.content);
-
-        // Handle text placeholders
-        if (node.nodeValue === '$text$') {
-            partMeta.push({ type: 'text', path });
-        } else if (
-            node.nodeType === Node.ELEMENT_NODE &&
-            (node as Element).hasAttributes()
-        ) {
-            // Check for attribute or event placeholders
-            partMeta.push(
-                ...Array.from((node as Element).attributes)
-                    .map((attr): Attr => attr)
-                    .filter(
-                        (attr): boolean =>
-                            attr.value === '<!--$attr$-->' ||
-                            attr.value === '<!--$event$-->'
-                    )
-                    .map((attr): PartMeta => {
-                        if (reIsEvent.test(attr.name)) {
-                            (node as Element).removeAttribute(attr.name);
-                            return {
-                                type: 'event',
-                                path,
-                                event: attr.name.slice(2).toLowerCase(), // Remove the "on" prefix
-                            };
-                        } else {
-                            return { type: 'attr', path, attr: attr.name };
-                        }
-                    })
-            );
-        }
-    }
-
     return {
-        template,
         partMeta,
+        templateStrings,
+        templateWithPlaceholders: htmlChunks.join(''),
     };
 };
 
@@ -133,7 +75,7 @@ const isPartMeta = (input: unknown): input is PartMeta => {
         return false;
     }
 
-    if (!('type' in input) || !('path' in input)) {
+    if (!('type' in input)) {
         return false;
     }
 
@@ -145,13 +87,6 @@ const isPartMeta = (input: unknown): input is PartMeta => {
         return false;
     }
 
-    if (
-        !Array.isArray(input.path) ||
-        !input.path.every((n): n is number => typeof n === 'number')
-    ) {
-        return false;
-    }
-
     if ('attr' in input && typeof input.attr !== 'string') {
         return false;
     }
@@ -159,11 +94,17 @@ const isPartMeta = (input: unknown): input is PartMeta => {
     if ('event' in input && typeof input.event !== 'string') {
         return false;
     }
+
     if (
-        'lastEventListener' in input &&
-        typeof input.lastEventListener !== 'undefined' &&
-        (typeof input.lastEventListener !== 'object' ||
-            input.lastEventListener === null)
+        'substitutionIndex' in input &&
+        typeof input.substitutionIndex !== 'number'
+    ) {
+        return false;
+    }
+
+    if (
+        'substitutionPlaceholder' in input &&
+        typeof input.substitutionPlaceholder !== 'string'
     ) {
         return false;
     }
@@ -175,11 +116,14 @@ const isTemplateCacheEntry = (input: unknown): input is TemplateCacheEntry => {
     return (
         typeof input === 'object' &&
         input !== null &&
-        'template' in input &&
-        input.template instanceof HTMLTemplateElement &&
         'partMeta' in input &&
         Array.isArray(input.partMeta) &&
-        input.partMeta.every(isPartMeta)
+        input.partMeta.every(isPartMeta) &&
+        'templateStrings' in input &&
+        Array.isArray(input.templateStrings) &&
+        'raw' in input.templateStrings &&
+        'templateWithPlaceholders' in input &&
+        typeof input.templateWithPlaceholders === 'string'
     );
 };
 
@@ -189,7 +133,7 @@ const isTemplateCacheEntry = (input: unknown): input is TemplateCacheEntry => {
  * @property substitutions - The substitutions
  */
 export type TemplateResult = Readonly<TemplateCacheEntry> & {
-    readonly substitutions: unknown[];
+    readonly substitutions: ReadonlyArray<unknown>;
 };
 
 /**
@@ -209,7 +153,7 @@ export const isTemplateResult = (input: unknown): input is TemplateResult => {
 };
 
 /**
- * Parse the HTML template and substitutions, creating a template result to have
+ * Parse the HTML template and substitutions, creating a template result enabling
  * efficient DOM manipulation by only updating bits (substitutions) that needs
  * to be updated via a `render` function by using a "dirty check" rendering
  * approach for DOM manipulation.
@@ -223,12 +167,13 @@ export const html = (
     ...substitutions: unknown[]
 ): TemplateResult => {
     if (!templateCache.has(template)) {
-        templateCache.set(template, createTempleCacheEntry(template));
+        templateCache.set(template, createTemplateCacheEntry(template));
     }
     const cacheEntry = templateCache.get(template)!;
     return {
-        template: cacheEntry.template,
         partMeta: cacheEntry.partMeta,
         substitutions,
+        templateStrings: cacheEntry.templateStrings,
+        templateWithPlaceholders: cacheEntry.templateWithPlaceholders,
     };
 };

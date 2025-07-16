@@ -51,6 +51,7 @@ const patchGlobalThis = (): void => {
         'document',
         'Document',
         'DocumentFragment',
+        'DOMParser',
         'Element',
         'HTMLElement',
         'HTMLTemplateElement',

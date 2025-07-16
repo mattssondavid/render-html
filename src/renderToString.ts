@@ -1,9 +1,59 @@
 if (typeof Document === 'undefined') {
     await import('./server/shim/shim-dom.ts');
 }
-import { type TemplateResult } from './html.ts';
-import { render } from './render.ts';
+import { isTemplateResult, type TemplateResult } from './html.ts';
 import { serializeHTMLfragment } from './serialization/serializeHTMLfragment.ts';
+
+const interpolate = (templateResult: TemplateResult): string => {
+    const { templateWithPlaceholders, partMeta, substitutions } =
+        templateResult;
+
+    let result = templateWithPlaceholders;
+    partMeta.forEach((meta): void => {
+        const substitution = substitutions[meta.substitutionIndex];
+        if (isTemplateResult(substitution)) {
+            result = result.replace(
+                meta.substitutionPlaceholder,
+                String(interpolate(substitution))
+            );
+        } else {
+            switch (meta.type) {
+                case 'attr':
+                case 'text': {
+                    result = result.replace(
+                        meta.substitutionPlaceholder,
+                        String(substitution)
+                    );
+                    break;
+                }
+
+                case 'event': {
+                    const reEvent = /([^\s=>\/]+)\s*=\s*(['"]?)([^'"]*)(['"]?)/;
+                    if (reEvent.test(result)) {
+                        const match = result.match(reEvent);
+                        if (match) {
+                            const event = match[1];
+                            if (event.includes(meta.event!)) {
+                                const index = result.indexOf(event);
+                                const removedEvent = result.replace(
+                                    reEvent,
+                                    ''
+                                );
+
+                                result =
+                                    // Remove event + empty space before the event
+                                    removedEvent.slice(0, index - 1) +
+                                    removedEvent.slice(index);
+                            }
+                        }
+                    }
+                    break;
+                }
+            }
+        }
+    });
+    return result;
+};
 
 /**
  * Options for rendering a DOM node to a string.
@@ -37,10 +87,33 @@ export const renderToString = (
     templateResult: TemplateResult,
     options?: RenderToStringOptions
 ): string => {
-    // Temporary container
-    const fragment = new DocumentFragment();
-    // Build a node structure with substituted values
-    render(templateResult, fragment);
+    const templateContent = interpolate(templateResult);
+    let fragment: Node;
+    if (/^\s*<html[\s>]/gim.test(templateContent)) {
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(templateContent, 'text/html');
+        const docTypematch = templateContent.match(
+            /^\s*<!DOCTYPE\s+([^\s>]+)(?:\s+(PUBLIC|SYSTEM)\s+"([^"]*)"(?:\s+"([^"]*)")?)?\s*>/i
+        );
+        if (docTypematch) {
+            const newDocType = document.implementation.createDocumentType(
+                docTypematch[1] ?? 'html',
+                docTypematch[3] ?? '',
+                docTypematch[4] ?? ''
+            );
+            // Replace the DomParser's standard DocType...
+            if (doc.doctype) {
+                doc.removeChild(doc.doctype);
+            }
+            doc.insertBefore(newDocType, doc.documentElement);
+        }
+        fragment = doc;
+    } else {
+        const template = document.createElement('template');
+        template.innerHTML = templateContent;
+        fragment = template.content;
+    }
+
     if (options && options.customElements) {
         // Use the argument provided custom element registry, which can be
         // used to pass along externally set web component definitions
