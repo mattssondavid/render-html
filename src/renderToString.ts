@@ -72,6 +72,11 @@ type RenderToStringOptions = {
      * definitions.
      */
     customElements?: CustomElementRegistry;
+
+    /**
+     * Optional serialize custom element shadow root's adopted stylesheets
+     */
+    serializeShadowRootAdoptedStyleSheets?: boolean;
 };
 
 /**
@@ -158,7 +163,7 @@ export const renderToString = (
                 },
             }
         );
-        const options: {
+        const _serializeOptions: {
             serializableShadowRoots?: boolean;
             shadowRoots?: ShadowRoot[];
         }[] = [];
@@ -173,7 +178,7 @@ export const renderToString = (
                 // Set the serialise options
                 if (element.shadowRoot) {
                     // The element is a Shadow Host
-                    options.push({
+                    _serializeOptions.push({
                         serializableShadowRoots:
                             element.shadowRoot.serializable ?? undefined,
                         shadowRoots: [element.shadowRoot],
@@ -196,7 +201,7 @@ export const renderToString = (
                     const fakeElement = new definition();
                     doc.body.appendChild(fakeElement);
                     if (fakeElement.shadowRoot) {
-                        options.push({
+                        _serializeOptions.push({
                             serializableShadowRoots:
                                 fakeElement.shadowRoot.serializable ??
                                 undefined,
@@ -217,7 +222,7 @@ export const renderToString = (
                   serializableShadowRoots?: boolean;
                   shadowRoots?: ShadowRoot[];
               }
-            | undefined = options.reduce(
+            | undefined = _serializeOptions.reduce(
             (
                 accumulator:
                     | {
@@ -252,6 +257,47 @@ export const renderToString = (
             undefined
         );
 
+        if (options && options.serializeShadowRootAdoptedStyleSheets) {
+            // Side effect-patch the fragment iff it has a node with a shadow root
+            // containing adopted stylesheets. This is done to let the serialise
+            // algorithm serialise the adopted stylesheet as <style> tag
+            patchShadowHostNodesWithInlineStyles(fragment);
+        }
+
         return serializeHTMLfragment(fragment, serializeOptions);
     }
+};
+
+const patchShadowHostNodesWithInlineStyles = (node: Node): Node => {
+    const insertStyleNodesFromAdoptedStylesOnShadowRoots = (
+        node: Node
+    ): void => {
+        if (
+            node.nodeType === Node.ELEMENT_NODE &&
+            (node as Element).shadowRoot !== null
+        ) {
+            const shadow = (node as Element).shadowRoot!;
+            shadow.adoptedStyleSheets
+                .map((sheet): HTMLStyleElement => {
+                    const rules = [...sheet.cssRules].map(
+                        (rule): string => rule.cssText
+                    );
+                    const styleElement =
+                        shadow.ownerDocument.createElement('style');
+                    styleElement.textContent = rules.join('');
+                    return styleElement;
+                })
+                // Side effect: Add <style> tag to the shadow root
+                .forEach(
+                    (styleElement): HTMLStyleElement =>
+                        shadow.insertBefore(styleElement, shadow.firstChild)
+                );
+        }
+    };
+
+    insertStyleNodesFromAdoptedStylesOnShadowRoots(node);
+    Array.from(node.childNodes).forEach(
+        insertStyleNodesFromAdoptedStylesOnShadowRoots
+    );
+    return node;
 };

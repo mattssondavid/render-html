@@ -1,6 +1,7 @@
 if (typeof Document === 'undefined') {
     await import('@src/server/shim/shim-dom.ts');
 }
+import { css } from '@src/css.ts';
 import { html, type TemplateResult } from '@src/html.ts';
 import { renderToString } from '@src/renderToString.ts';
 import { assertEquals } from '@std/assert';
@@ -279,5 +280,63 @@ describe('renderToString', (): void => {
             '</body></html>',
         ];
         assertEquals(actual, expected);
+    });
+
+    it('can handle rendering an element (web component) with adopted styleSheets', (): void => {
+        class SerializableAdoptedStylesheetsElement extends HTMLElement {
+            constructor() {
+                super();
+            }
+
+            connectedCallback(): void {
+                if (!this.shadowRoot) {
+                    const template = document.createElement('template');
+                    template.innerHTML = `<slot></slot>`;
+
+                    const style = css`
+                        :host {
+                            background-color: white;
+                        }
+                    `;
+
+                    const shadow = this.attachShadow({
+                        mode: 'open',
+                        serializable: true,
+                    });
+
+                    shadow.appendChild(template.content.cloneNode(true));
+                    shadow.adoptedStyleSheets.push(style);
+                }
+            }
+        }
+        if (!customElements.get('serializable-adopted-stylesheets-element')) {
+            customElements.define(
+                'serializable-adopted-stylesheets-element',
+                SerializableAdoptedStylesheetsElement
+            );
+        }
+
+        const template = (): TemplateResult =>
+            // prettier-ignore
+            html`<serializable-adopted-stylesheets-element>Hello there</serializable-adopted-stylesheets-element>`;
+        const expected = `\
+            <serializable-adopted-stylesheets-element>\
+                <template \
+                    shadowrootmode="open" \
+                    shadowrootserializable="" \
+                    > \
+                    <style>:host {background-color: white;}</style> \
+                    <slot></slot> \
+                </template>Hello there</serializable-adopted-stylesheets-element>`
+            .replaceAll(/\s{2,}/g, ' ')
+            .replaceAll(' >', '>')
+            .replaceAll('> <', '><')
+            .trim();
+        assertEquals(
+            renderToString(template(), {
+                serializeShadowRootAdoptedStyleSheets: true,
+            }),
+            expected
+        );
     });
 });
