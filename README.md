@@ -49,6 +49,8 @@ The `renderToString` consumes a `TemplateResult` and renders the template with p
 
 -   `customElements`: An optional provided custom element registry to use when checking for web component definitions.
 
+-   `serializeShadowRootAdoptedStyleSheets`: An optional setting to, if true, serialize custom element shadow root's adopted stylesheets.
+
 ## Usage
 
 1. Create a `TemplateResult` via `html`;
