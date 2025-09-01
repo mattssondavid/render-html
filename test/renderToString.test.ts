@@ -1,4 +1,4 @@
-if (typeof Document === 'undefined') {
+if (typeof self.document === 'undefined') {
     await import('@src/server/shim/shim-dom.ts');
 }
 import { css } from '@src/css.ts';
@@ -146,14 +146,14 @@ describe('renderToString', (): void => {
     });
 
     it('can handle rendering serializable web component', (): void => {
-        class SerializableElement extends HTMLElement {
+        class SerializableElement extends self.HTMLElement {
             constructor() {
                 super();
             }
 
             connectedCallback(): void {
                 if (!this.shadowRoot) {
-                    const template = document.createElement('template');
+                    const template = self.document.createElement('template');
                     template.innerHTML = `<slot></slot>`;
 
                     this.attachShadow({
@@ -163,8 +163,11 @@ describe('renderToString', (): void => {
                 }
             }
         }
-        if (!customElements.get('serializable-element')) {
-            customElements.define('serializable-element', SerializableElement);
+        if (!self.customElements.get('serializable-element')) {
+            self.customElements.define(
+                'serializable-element',
+                SerializableElement
+            );
         }
 
         const template = (): TemplateResult =>
@@ -220,14 +223,14 @@ describe('renderToString', (): void => {
     });
 
     it('can handle document rendering with serializable web element', (): void => {
-        class SerializableElement extends HTMLElement {
+        class SerializableElement extends self.HTMLElement {
             constructor() {
                 super();
             }
 
             connectedCallback(): void {
                 if (!this.shadowRoot) {
-                    const template = document.createElement('template');
+                    const template = self.document.createElement('template');
                     template.innerHTML = `<slot></slot>`;
 
                     this.attachShadow({
@@ -237,8 +240,11 @@ describe('renderToString', (): void => {
                 }
             }
         }
-        if (!customElements.get('serializable-element')) {
-            customElements.define('serializable-element', SerializableElement);
+        if (!self.customElements.get('serializable-element')) {
+            self.customElements.define(
+                'serializable-element',
+                SerializableElement
+            );
         }
 
         const template = (lang: string, title: string): TemplateResult =>
@@ -290,7 +296,7 @@ describe('renderToString', (): void => {
 
             connectedCallback(): void {
                 if (!this.shadowRoot) {
-                    const template = document.createElement('template');
+                    const template = self.document.createElement('template');
                     template.innerHTML = `<slot></slot>`;
 
                     const style = css`
@@ -309,8 +315,10 @@ describe('renderToString', (): void => {
                 }
             }
         }
-        if (!customElements.get('serializable-adopted-stylesheets-element')) {
-            customElements.define(
+        if (
+            !self.customElements.get('serializable-adopted-stylesheets-element')
+        ) {
+            self.customElements.define(
                 'serializable-adopted-stylesheets-element',
                 SerializableAdoptedStylesheetsElement
             );

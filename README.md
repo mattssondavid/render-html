@@ -10,6 +10,10 @@ The project aims to
 -   Allow render HTML to DOM container;
 -   Allow render HTML to string output;
 
+## Dependencies
+
+This project will assume that the caller defines DOM APIs. For expected DOM interfaces and properties, see [shim-dom](./src/server/shim/shim-dom.ts).
+
 ## API reference
 
 ### HTML

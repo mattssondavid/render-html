@@ -8,16 +8,16 @@ declare global {
  * Monkey Patch `CSSStyleSheet.replaceSync` when needed while waiting for JSDOM
  * to add support.
  */
-if (!('replaceSync' in CSSStyleSheet.prototype)) {
-    const proto: CSSStyleSheet = CSSStyleSheet.prototype;
+if (!('replaceSync' in self.CSSStyleSheet.prototype)) {
+    const proto: CSSStyleSheet = self.CSSStyleSheet.prototype;
     proto.replaceSync = function (cssText: string): void {
         while (this.cssRules.length > 0) {
             this.deleteRule(0);
         }
 
-        const style = document.createElement('style');
+        const style = self.document.createElement('style');
         style.textContent = cssText;
-        document.head.appendChild(style);
+        self.document.head.appendChild(style);
         const tempSheet = style.sheet as CSSStyleSheet;
 
         try {

@@ -1,6 +1,3 @@
-if (typeof Document === 'undefined') {
-    await import('./server/shim/shim-dom.ts');
-}
 import { isTemplateResult, type TemplateResult } from './html.ts';
 
 type NodeInstance = {
@@ -44,15 +41,15 @@ const createNodeInstance = (templateResult: TemplateResult): NodeInstance => {
     const parts: Part[] = [];
     const { templateWithPlaceholders, partMeta, substitutions } =
         templateResult;
-    const template = document.createElement('template');
+    const template = self.document.createElement('template');
     template.innerHTML = templateWithPlaceholders;
     const fragmentRoot = template.content.cloneNode(true);
 
     /* Map each substitute placeholder to the actual node to replace */
     const substituteNodes = new Map<string, Node>();
-    const walker = document.createTreeWalker(
+    const walker = self.document.createTreeWalker(
         fragmentRoot,
-        NodeFilter.SHOW_ALL,
+        self.NodeFilter.SHOW_ALL,
         {
             // We only care for placeholders in the parsed template
             //
@@ -60,35 +57,35 @@ const createNodeInstance = (templateResult: TemplateResult): NodeInstance => {
             // node is always null. Instead, to find the Attr node, we need to
             // use the `Element.attributes` instead.
             // Because of this, `NodeFilter.SHOW_COMMENT` cannot be used.
-            acceptNode: (node): number => {
+            acceptNode: (node: Node): number => {
                 // Check for attribute placeholders
-                if (node.nodeType === Node.ELEMENT_NODE) {
+                if (node.nodeType === self.Node.ELEMENT_NODE) {
                     const attrs = Array.from((node as Element).attributes);
                     return attrs.some(
-                        (attr): boolean =>
+                        (attr: Attr): boolean =>
                             attr.nodeValue?.includes('$attr-') ||
                             attr.nodeValue?.includes('$event-') ||
                             false
                     )
-                        ? NodeFilter.FILTER_ACCEPT
-                        : NodeFilter.FILTER_SKIP;
+                        ? self.NodeFilter.FILTER_ACCEPT
+                        : self.NodeFilter.FILTER_SKIP;
                 }
 
                 // Check for Text placeholder
                 else if (
-                    node.nodeType === Node.COMMENT_NODE &&
+                    node.nodeType === self.Node.COMMENT_NODE &&
                     node.nodeValue?.includes('$text-')
                 ) {
-                    return NodeFilter.FILTER_ACCEPT;
+                    return self.NodeFilter.FILTER_ACCEPT;
                 }
 
-                return NodeFilter.FILTER_SKIP;
+                return self.NodeFilter.FILTER_SKIP;
             },
         }
     );
     while (walker.nextNode()) {
         const node = walker.currentNode;
-        if (node.nodeType === Node.ELEMENT_NODE) {
+        if (node.nodeType === self.Node.ELEMENT_NODE) {
             for (const attr of Array.from((node as Element).attributes)) {
                 substituteNodes.set(attr.nodeValue!, node);
             }
@@ -150,7 +147,7 @@ const createNodeInstance = (templateResult: TemplateResult): NodeInstance => {
                     if (node.parentNode) {
                         nestedInstance.parent = node.parentNode;
                     }
-                    const fragment = document.createDocumentFragment();
+                    const fragment = self.document.createDocumentFragment();
                     nestedInstance.nodes.forEach((nestedNode: Node): void => {
                         fragment.appendChild(nestedNode);
                     });
@@ -163,7 +160,7 @@ const createNodeInstance = (templateResult: TemplateResult): NodeInstance => {
                         lastValue: substitution, // Used for render update
                     });
                 } else if (Array.isArray(substitution)) {
-                    const fragment = document.createDocumentFragment();
+                    const fragment = self.document.createDocumentFragment();
                     substitution.forEach((item): void => {
                         if (isTemplateResult(item)) {
                             const nestedInstance = createNodeInstance(item);
@@ -173,7 +170,9 @@ const createNodeInstance = (templateResult: TemplateResult): NodeInstance => {
                                 }
                             );
                         } else {
-                            const text = document.createTextNode(String(item));
+                            const text = self.document.createTextNode(
+                                String(item)
+                            );
                             fragment.appendChild(text);
                         }
                     });
@@ -185,7 +184,9 @@ const createNodeInstance = (templateResult: TemplateResult): NodeInstance => {
                         lastValue: substitution, // Used for render update
                     });
                 } else {
-                    const text = document.createTextNode(String(substitution));
+                    const text = self.document.createTextNode(
+                        String(substitution)
+                    );
                     node.parentNode?.replaceChild(text, node);
                     parts.push({
                         type: 'text',
@@ -279,7 +280,7 @@ export const render = (
                     } else {
                         // Replace nodes
                         const nestedInstance = createNodeInstance(substitution);
-                        const fragment = document.createDocumentFragment();
+                        const fragment = self.document.createDocumentFragment();
                         nestedInstance.nodes.forEach(
                             (nestedNode: Node): void => {
                                 fragment.appendChild(nestedNode);
@@ -306,7 +307,7 @@ export const render = (
                     ) {
                         break;
                     }
-                    const fragment = document.createDocumentFragment();
+                    const fragment = self.document.createDocumentFragment();
                     substitution.forEach((item): void => {
                         if (isTemplateResult(item)) {
                             const nestedInstance = createNodeInstance(item);
@@ -316,7 +317,9 @@ export const render = (
                                 }
                             );
                         } else {
-                            const text = document.createTextNode(String(item));
+                            const text = self.document.createTextNode(
+                                String(item)
+                            );
                             fragment.appendChild(text);
                         }
                     });

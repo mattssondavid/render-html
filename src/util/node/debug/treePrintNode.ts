@@ -9,5 +9,7 @@ import { debugNode } from './debugNode.ts';
 export const treePrintNode = (node: Node | null, depth: number = 0): void => {
     if (!node) return;
     console.log(`${'\t'.repeat(depth)}${debugNode(node)}`);
-    node.childNodes.forEach((child): void => treePrintNode(child, depth + 1));
+    node.childNodes.forEach((child: ChildNode): void =>
+        treePrintNode(child, depth + 1)
+    );
 };

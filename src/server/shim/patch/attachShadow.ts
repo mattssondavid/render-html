@@ -57,8 +57,8 @@ declare global {
             AdoptedStyleSheetsShadowRoot {}
 }
 
-const originalAttachShadow = globalThis.Element.prototype.attachShadow;
-globalThis.Element.prototype.attachShadow = function (
+const originalAttachShadow = self.Element.prototype.attachShadow;
+self.Element.prototype.attachShadow = function (
     options: ShadowRootInit & { clonable?: boolean }
 ): ShadowRoot {
     const shadowRoot = originalAttachShadow.apply(this, [options]);
@@ -118,14 +118,20 @@ globalThis.Element.prototype.attachShadow = function (
                 const styleSheetTags = Array.from(
                     shadowRoot.querySelectorAll('style')
                 )
-                    .map((style): CSSStyleSheet | null => style.sheet)
-                    .filter((sheet): sheet is CSSStyleSheet => sheet !== null);
+                    .map(
+                        (style: HTMLStyleElement): CSSStyleSheet | null =>
+                            style.sheet
+                    )
+                    .filter(
+                        (sheet: CSSStyleSheet | null): sheet is CSSStyleSheet =>
+                            sheet !== null
+                    );
 
                 const styleSheets = [...styleSheetTags];
 
                 return {
                     length: styleSheets.length,
-                    item(index): CSSStyleSheet {
+                    item(index: number): CSSStyleSheet {
                         return styleSheets[index] ?? null;
                     },
                     *[Symbol.iterator](): ArrayIterator<CSSStyleSheet> {

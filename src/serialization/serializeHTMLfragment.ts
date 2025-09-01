@@ -1,7 +1,3 @@
-if (typeof Document === 'undefined') {
-    await import('../server/shim/shim-dom.ts');
-}
-
 /*
  * Element types
  * @see https://html.spec.whatwg.org/multipage/syntax.html#elements-2
@@ -87,7 +83,7 @@ type GetHTMLOptions = {
  *
  * @param {Node} node The node to serialise, where `node` is expected to be
  * either an `Element`, `ShadowRoot` or a `DocumentFragment`
- * @param {{serializableShadowRoots: boolean, shadowRoots: globalThis.ShadowRoot[]}} options Options
+ * @param {{serializableShadowRoots: boolean, shadowRoots: ShadowRoot[]}} options Options
  * @returns {string} The string representing the HTML serialisation of the node
  */
 export const serializeHTMLfragment = (
@@ -99,7 +95,7 @@ export const serializeHTMLfragment = (
      * element
      */
     if (
-        node.nodeType === Node.ELEMENT_NODE &&
+        node.nodeType === self.Node.ELEMENT_NODE &&
         (obsoleteElements.has((node as Element).tagName.toLowerCase()) ||
             voidElements.has((node as Element).tagName.toLowerCase()))
     ) {
@@ -110,8 +106,8 @@ export const serializeHTMLfragment = (
      * Special handle the `template` element
      */
     if (
-        node.nodeType === Node.ELEMENT_NODE &&
-        node instanceof HTMLTemplateElement
+        node.nodeType === self.Node.ELEMENT_NODE &&
+        node instanceof self.HTMLTemplateElement
     ) {
         node = node.content; // DocumentFragment
     }
@@ -123,7 +119,7 @@ export const serializeHTMLfragment = (
      * @see https://dom.spec.whatwg.org/#element-shadow-host
      */
     if (
-        node.nodeType === Node.ELEMENT_NODE &&
+        node.nodeType === self.Node.ELEMENT_NODE &&
         (node as Element).shadowRoot !== null
     ) {
         const shadow = (node as Element).shadowRoot!;
@@ -153,7 +149,7 @@ export const serializeHTMLfragment = (
         (currentNode: Node): string => {
             let fragment;
             switch (currentNode.nodeType) {
-                case Node.ELEMENT_NODE: {
+                case self.Node.ELEMENT_NODE: {
                     const tagName = (
                         currentNode as Element
                     ).tagName.toLowerCase();
@@ -163,7 +159,7 @@ export const serializeHTMLfragment = (
                     // Skip `is` property, it is a browswer internal value
                     fragment += [...(currentNode as Element).attributes]
                         .map(
-                            (attr): string =>
+                            (attr: Attr): string =>
                                 ` ${
                                     attr.namespaceURI
                                         ? attr.name
@@ -187,7 +183,7 @@ export const serializeHTMLfragment = (
                     return fragment;
                 }
 
-                case Node.TEXT_NODE: {
+                case self.Node.TEXT_NODE: {
                     const parent = currentNode.parentNode;
                     if (parent && parent.nodeType === Node.ELEMENT_NODE) {
                         const tagName = (
@@ -200,17 +196,17 @@ export const serializeHTMLfragment = (
                     return escapeText((currentNode as Text).data);
                 }
 
-                case Node.COMMENT_NODE: {
+                case self.Node.COMMENT_NODE: {
                     return `<!--${(currentNode as Comment).data}-->`;
                 }
 
-                case Node.PROCESSING_INSTRUCTION_NODE: {
+                case self.Node.PROCESSING_INSTRUCTION_NODE: {
                     return `<?${
                         (currentNode as ProcessingInstruction).target
                     } ${(currentNode as ProcessingInstruction).data}>`;
                 }
 
-                case Node.DOCUMENT_TYPE_NODE: {
+                case self.Node.DOCUMENT_TYPE_NODE: {
                     return `<!DOCTYPE ${(currentNode as DocumentType).name}>`;
                 }
 

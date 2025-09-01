@@ -1,4 +1,4 @@
-if (typeof Document === 'undefined') {
+if (typeof self.document === 'undefined') {
     await import('@src/server/shim/shim-dom.ts');
 }
 import { serializeHTMLfragment } from '@src/serialization/serializeHTMLfragment.ts';
@@ -10,14 +10,14 @@ describe('serializeHTMLfragment', (): void => {
         /**
          * Tag closed-element
          */
-        class ClosedElement extends HTMLElement {
+        class ClosedElement extends self.HTMLElement {
             constructor() {
                 super();
             }
 
             connectedCallback(): void {
                 if (!this.shadowRoot) {
-                    const template = document.createElement('template');
+                    const template = self.document.createElement('template');
                     template.innerHTML = `<slot></slot>`;
 
                     this.attachShadow({ mode: 'closed' }).appendChild(
@@ -26,7 +26,7 @@ describe('serializeHTMLfragment', (): void => {
                 }
             }
         }
-        customElements.define('closed-element', ClosedElement);
+        self.customElements.define('closed-element', ClosedElement);
 
         /**
          * Tag delegates-focus-element
@@ -38,7 +38,7 @@ describe('serializeHTMLfragment', (): void => {
 
             connectedCallback(): void {
                 if (!this.shadowRoot) {
-                    const template = document.createElement('template');
+                    const template = self.document.createElement('template');
                     template.innerHTML = `<slot></slot>`;
 
                     this.attachShadow({
@@ -48,7 +48,10 @@ describe('serializeHTMLfragment', (): void => {
                 }
             }
         }
-        customElements.define('delegates-focus-element', DelegatesFocusElement);
+        self.customElements.define(
+            'delegates-focus-element',
+            DelegatesFocusElement
+        );
 
         /**
          * Tag open-element
@@ -60,7 +63,7 @@ describe('serializeHTMLfragment', (): void => {
 
             connectedCallback(): void {
                 if (!this.shadowRoot) {
-                    const template = document.createElement('template');
+                    const template = self.document.createElement('template');
                     template.innerHTML = `<slot></slot>`;
 
                     this.attachShadow({ mode: 'open' }).appendChild(
@@ -69,7 +72,7 @@ describe('serializeHTMLfragment', (): void => {
                 }
             }
         }
-        customElements.define('open-element', OpenElement);
+        self.customElements.define('open-element', OpenElement);
 
         /**
          * Tag serializable-element
@@ -81,7 +84,7 @@ describe('serializeHTMLfragment', (): void => {
 
             connectedCallback(): void {
                 if (!this.shadowRoot) {
-                    const template = document.createElement('template');
+                    const template = self.document.createElement('template');
                     template.innerHTML = `<slot></slot>`;
 
                     this.attachShadow({
@@ -91,7 +94,7 @@ describe('serializeHTMLfragment', (): void => {
                 }
             }
         }
-        customElements.define('serializable-element', SerializableElement);
+        self.customElements.define('serializable-element', SerializableElement);
 
         /**
          * Tag serializable-delegates-focus-element
@@ -103,7 +106,7 @@ describe('serializeHTMLfragment', (): void => {
 
             connectedCallback(): void {
                 if (!this.shadowRoot) {
-                    const template = document.createElement('template');
+                    const template = self.document.createElement('template');
                     template.innerHTML = `<slot></slot>`;
 
                     this.attachShadow({
@@ -114,62 +117,62 @@ describe('serializeHTMLfragment', (): void => {
                 }
             }
         }
-        customElements.define(
+        self.customElements.define(
             'serializable-delegates-focus-element',
             SerializableDelegatesFocusElement
         );
     });
 
     afterEach((): void => {
-        document.body.replaceChildren(); // Clear body from element children
+        self.document.body.replaceChildren(); // Clear body from element children
     });
 
     it('can serialise empty element', (): void => {
-        const span = document.createElement('span');
+        const span = self.document.createElement('span');
         assertEquals(serializeHTMLfragment(span), '');
     });
 
     it('can serialise a single element', (): void => {
-        const p = document.createElement('p');
+        const p = self.document.createElement('p');
         p.textContent = 'Hi';
         assertEquals(serializeHTMLfragment(p), 'Hi');
     });
 
     it('can serialise an element with child', (): void => {
-        const container = document.createElement('div');
-        const p = document.createElement('p');
+        const container = self.document.createElement('div');
+        const p = self.document.createElement('p');
         p.textContent = 'Hi';
         container.appendChild(p);
         assertEquals(serializeHTMLfragment(container), '<p>Hi</p>');
     });
 
     it('can serialise an element with attributes', (): void => {
-        const container = document.createElement('div');
+        const container = self.document.createElement('div');
         container.setAttribute('id', 'hi');
         assertEquals(serializeHTMLfragment(container), '');
     });
 
     it('can serialise a child element with attribute', (): void => {
-        const container = document.createElement('div');
+        const container = self.document.createElement('div');
         container.setAttribute('id', 'hi');
-        const p = document.createElement('p');
+        const p = self.document.createElement('p');
         p.setAttribute('id', '2');
         container.appendChild(p);
         assertEquals(serializeHTMLfragment(container), '<p id="2"></p>');
     });
 
     it('can serialise an element node with attributes requiring escaping', (): void => {
-        const container = document.createElement('div');
-        const p = document.createElement('p');
+        const container = self.document.createElement('div');
+        const p = self.document.createElement('p');
         p.setAttribute('text', '1<2');
         container.appendChild(p);
         assertEquals(serializeHTMLfragment(container), '<p text="1&lt;2"></p>');
     });
 
     it('can serialise nested elements', (): void => {
-        const container = document.createElement('div');
-        const p = document.createElement('p');
-        const span = document.createElement('span');
+        const container = self.document.createElement('div');
+        const p = self.document.createElement('p');
+        const span = self.document.createElement('span');
         span.textContent = 'Hi';
         p.appendChild(span);
         container.appendChild(p);
@@ -180,14 +183,14 @@ describe('serializeHTMLfragment', (): void => {
     });
 
     it('can serialise a list', (): void => {
-        const container = document.createElement('div');
-        const ul = document.createElement('ul');
+        const container = self.document.createElement('div');
+        const ul = self.document.createElement('ul');
         [1, 2, 3].forEach((value, index): void => {
-            const li = document.createElement('li');
+            const li = self.document.createElement('li');
             if (index === 1) {
                 li.setAttribute('selected', '');
             }
-            const text = document.createTextNode(String(value));
+            const text = self.document.createTextNode(String(value));
             li.appendChild(text);
             ul.appendChild(li);
         });
@@ -199,7 +202,7 @@ describe('serializeHTMLfragment', (): void => {
     });
 
     it('can serialise text node with HTML escaping', (): void => {
-        const container = document.createElement('div');
+        const container = self.document.createElement('div');
         container.textContent = '1 < 2 & 3 > 2';
         assertEquals(
             serializeHTMLfragment(container),
@@ -208,23 +211,23 @@ describe('serializeHTMLfragment', (): void => {
     });
 
     it('can serialise text node with unicode escaping', (): void => {
-        const container = document.createElement('div');
+        const container = self.document.createElement('div');
         container.textContent = '1 \u00A0'; // 1 no-break space
         assertEquals(serializeHTMLfragment(container), '1 &nbsp;');
     });
 
     it('can serialise comment node', (): void => {
-        const container = document.createElement('div');
-        const comment = document.createComment('comment');
+        const container = self.document.createElement('div');
+        const comment = self.document.createComment('comment');
         container.appendChild(comment);
         assertEquals(serializeHTMLfragment(container), '<!--comment-->');
     });
 
     it('can serialise a document fragment with mixed nodes', (): void => {
-        const fragment = document.createDocumentFragment();
-        const div = document.createElement('div');
+        const fragment = self.document.createDocumentFragment();
+        const div = self.document.createElement('div');
         div.textContent = 'abc';
-        const comment = document.createComment('foo');
+        const comment = self.document.createComment('foo');
         fragment.appendChild(div);
         fragment.appendChild(comment);
         assertEquals(
@@ -234,14 +237,14 @@ describe('serializeHTMLfragment', (): void => {
     });
 
     it('can serialise void element', (): void => {
-        const container = document.createElement('div');
-        const br = document.createElement('br');
+        const container = self.document.createElement('div');
+        const br = self.document.createElement('br');
         container.appendChild(br);
         assertEquals(serializeHTMLfragment(container), '<br>');
     });
 
     it('can serialise doctype node', (): void => {
-        const htmlDocument = document.implementation.createHTMLDocument();
+        const htmlDocument = self.document.implementation.createHTMLDocument();
         // <!DOCTYPE html><html><head></head><body></body></html>
         // We only care of the document type onde
         htmlDocument.removeChild(htmlDocument.lastChild!);
@@ -249,20 +252,20 @@ describe('serializeHTMLfragment', (): void => {
     });
 
     it('can serialise custom element without options', (): void => {
-        const element = document.createElement('open-element');
-        const p = document.createElement('p');
+        const element = self.document.createElement('open-element');
+        const p = self.document.createElement('p');
         p.textContent = 'Hello there';
         element.appendChild(p);
-        document.body.appendChild(element);
+        self.document.body.appendChild(element);
         assertEquals(serializeHTMLfragment(element), '<p>Hello there</p>');
     });
 
     it('can serialise custom element with closed element shadowRoot with option serializableShadowRoots', (): void => {
-        const element = document.createElement('closed-element');
-        const p = document.createElement('p');
+        const element = self.document.createElement('closed-element');
+        const p = self.document.createElement('p');
         p.textContent = 'Hello there';
         element.appendChild(p);
-        document.body.appendChild(element);
+        self.document.body.appendChild(element);
         assertEquals(
             serializeHTMLfragment(element, { serializableShadowRoots: true }),
             '<p>Hello there</p>'
@@ -270,11 +273,11 @@ describe('serializeHTMLfragment', (): void => {
     });
 
     it('can serialise custom element with specified closed ShadowRoot with option shadowRoots', (): void => {
-        const element = document.createElement('closed-element');
-        const p = document.createElement('p');
+        const element = self.document.createElement('closed-element');
+        const p = self.document.createElement('p');
         p.textContent = 'Hello there';
         element.appendChild(p);
-        document.body.appendChild(element);
+        self.document.body.appendChild(element);
         assertEquals(
             serializeHTMLfragment(element, {
                 shadowRoots: [element.shadowRoot!],
@@ -284,11 +287,11 @@ describe('serializeHTMLfragment', (): void => {
     });
 
     it('can serialise custom element with open element shadowRoot with option serializableShadowRoots', (): void => {
-        const element = document.createElement('serializable-element');
-        const p = document.createElement('p');
+        const element = self.document.createElement('serializable-element');
+        const p = self.document.createElement('p');
         p.textContent = 'Hello there';
         element.appendChild(p);
-        document.body.appendChild(element);
+        self.document.body.appendChild(element);
         const expected = `\
             <template \
                 shadowrootmode="open" \
@@ -309,11 +312,11 @@ describe('serializeHTMLfragment', (): void => {
     });
 
     it('can serialise custom element with open element shadowRoot with option serializableShadowRoots but element is not serialiseable', (): void => {
-        const element = document.createElement('open-element');
-        const p = document.createElement('p');
+        const element = self.document.createElement('open-element');
+        const p = self.document.createElement('p');
         p.textContent = 'Hello there';
         element.appendChild(p);
-        document.body.appendChild(element);
+        self.document.body.appendChild(element);
         assertEquals(
             serializeHTMLfragment(element, {
                 serializableShadowRoots: true,
@@ -323,11 +326,11 @@ describe('serializeHTMLfragment', (): void => {
     });
 
     it('can serialise custom element with delegate focus with option serializableShadowRoots but element is not serialiseable', (): void => {
-        const element = document.createElement('delegates-focus-element');
-        const p = document.createElement('p');
+        const element = self.document.createElement('delegates-focus-element');
+        const p = self.document.createElement('p');
         p.textContent = 'Hello there';
         element.appendChild(p);
-        document.body.appendChild(element);
+        self.document.body.appendChild(element);
         assertEquals(
             serializeHTMLfragment(element, {
                 serializableShadowRoots: true,
@@ -337,13 +340,13 @@ describe('serializeHTMLfragment', (): void => {
     });
 
     it('can serialise custom element with delegate focus with option serializableShadowRoots', (): void => {
-        const element = document.createElement(
+        const element = self.document.createElement(
             'serializable-delegates-focus-element'
         );
-        const p = document.createElement('p');
+        const p = self.document.createElement('p');
         p.textContent = 'Hello there';
         element.appendChild(p);
-        document.body.appendChild(element);
+        self.document.body.appendChild(element);
         const expected = `\
             <template \
                 shadowrootmode="open" \
@@ -365,11 +368,11 @@ describe('serializeHTMLfragment', (): void => {
     });
 
     it('can serialise custom element with specified open ShadowRoot with option shadowRoots', (): void => {
-        const element = document.createElement('serializable-element');
-        const p = document.createElement('p');
+        const element = self.document.createElement('serializable-element');
+        const p = self.document.createElement('p');
         p.textContent = 'Hello there';
         element.appendChild(p);
-        document.body.appendChild(element);
+        self.document.body.appendChild(element);
         const expected = `
             <template \
                 shadowrootmode="open" \
@@ -390,11 +393,11 @@ describe('serializeHTMLfragment', (): void => {
     });
 
     it('can serialise custom element once with open element ShadowRoot and same ShadowRoot specified with option serializableShadowRoots and shadowRoots', (): void => {
-        const element = document.createElement('serializable-element');
-        const p = document.createElement('p');
+        const element = self.document.createElement('serializable-element');
+        const p = self.document.createElement('p');
         p.textContent = 'Hello there';
         element.appendChild(p);
-        document.body.appendChild(element);
+        self.document.body.appendChild(element);
         const expected = `
             <template \
                 shadowrootmode="open" \
@@ -416,13 +419,17 @@ describe('serializeHTMLfragment', (): void => {
     });
 
     it('can serialise nestled custom elements with open ShadowRoots with option serializableShadowRoots', (): void => {
-        const outerElement = document.createElement('serializable-element');
-        const innerElement = document.createElement('serializable-element');
-        const p = document.createElement('p');
+        const outerElement = self.document.createElement(
+            'serializable-element'
+        );
+        const innerElement = self.document.createElement(
+            'serializable-element'
+        );
+        const p = self.document.createElement('p');
         p.textContent = 'Hello there';
         innerElement.appendChild(p);
         outerElement.appendChild(innerElement);
-        document.body.appendChild(outerElement);
+        self.document.body.appendChild(outerElement);
         const expected = `\
             <template \
                 shadowrootmode="open" \

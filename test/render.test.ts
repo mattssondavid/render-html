@@ -1,4 +1,4 @@
-if (typeof Document === 'undefined') {
+if (typeof self.document === 'undefined') {
     await import('@src/server/shim/shim-dom.ts');
 }
 import { html, type TemplateResult } from '@src/html.ts';
@@ -10,13 +10,13 @@ describe('render', (): void => {
     let container: HTMLElement;
 
     beforeEach((): void => {
-        container = document.createElement('div');
-        document.body.appendChild(container);
+        container = self.document.createElement('div');
+        self.document.body.appendChild(container);
     });
 
     afterEach((): void => {
         if (container) {
-            document.body.removeChild(container);
+            self.document.body.removeChild(container);
         }
     });
 
