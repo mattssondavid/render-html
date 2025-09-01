@@ -1,4 +1,4 @@
-if (typeof Document === 'undefined') {
+if (typeof self.document === 'undefined') {
     await import('@src/server/shim/shim-dom.ts');
 }
 import { css } from '@src/css.ts';
@@ -17,7 +17,7 @@ describe('html', (): void => {
             }
         `;
 
-        const expected = new CSSStyleSheet();
+        const expected = new self.CSSStyleSheet();
         expected.insertRule(`* { color: purple;}`);
 
         assertEquals(
@@ -34,7 +34,7 @@ describe('html', (): void => {
                 color: ${color};
             }
         `;
-        const expected = new CSSStyleSheet();
+        const expected = new self.CSSStyleSheet();
         expected.insertRule(`* {color: orange}`);
         assertEquals(
             cssRulesToCssText(actual.cssRules),

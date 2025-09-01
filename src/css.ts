@@ -1,7 +1,3 @@
-if (typeof Document === 'undefined') {
-    await import('./server/shim/shim-dom.ts');
-}
-
 /**
  * Parse the tagged template strings and creates a CSSStyleSheet with the valid
  * CSS in the template string as part of the new stylesheet's CSSRuleList.
@@ -15,7 +11,7 @@ export const css = (
     ...substitutions: unknown[]
 ): CSSStyleSheet => {
     const content = String.raw({ raw: strings }, ...substitutions);
-    const sheet = new CSSStyleSheet();
+    const sheet = new self.CSSStyleSheet();
     sheet.replaceSync(content);
     return sheet;
 };

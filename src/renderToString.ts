@@ -1,6 +1,3 @@
-if (typeof Document === 'undefined') {
-    await import('./server/shim/shim-dom.ts');
-}
 import { isTemplateResult, type TemplateResult } from './html.ts';
 import { serializeHTMLfragment } from './serialization/serializeHTMLfragment.ts';
 
@@ -95,13 +92,13 @@ export const renderToString = (
     const templateContent = interpolate(templateResult);
     let fragment: Node;
     if (/^\s*<html[\s>]/gim.test(templateContent)) {
-        const parser = new DOMParser();
+        const parser = new self.DOMParser();
         const doc = parser.parseFromString(templateContent, 'text/html');
         const docTypematch = templateContent.match(
             /^\s*<!DOCTYPE\s+([^\s>]+)(?:\s+(PUBLIC|SYSTEM)\s+"([^"]*)"(?:\s+"([^"]*)")?)?\s*>/i
         );
         if (docTypematch) {
-            const newDocType = document.implementation.createDocumentType(
+            const newDocType = self.document.implementation.createDocumentType(
                 docTypematch[1] ?? 'html',
                 docTypematch[3] ?? '',
                 docTypematch[4] ?? ''
@@ -114,7 +111,7 @@ export const renderToString = (
         }
         fragment = doc;
     } else {
-        const template = document.createElement('template');
+        const template = self.document.createElement('template');
         template.innerHTML = templateContent;
         fragment = template.content;
     }
@@ -137,7 +134,7 @@ export const renderToString = (
         // URL.revokeObjectURL(url);
         // ```
         // where `scriptContent` is the <script>'s content
-        customElements = options.customElements;
+        self.customElements = options.customElements;
     }
     if (options && options.renderer) {
         // Use custom renderer
@@ -148,18 +145,18 @@ export const renderToString = (
          * If there are some, enable serialising for web components
          */
         const customTagPattern = /[a-z]+-[a-z]+/;
-        const walker = document.createTreeWalker(
+        const walker = self.document.createTreeWalker(
             fragment,
-            NodeFilter.SHOW_ELEMENT,
+            self.NodeFilter.SHOW_ELEMENT,
             {
-                acceptNode: (node): number => {
+                acceptNode: (node: Node): number => {
                     if (
                         customTagPattern.test(
                             (node as Element).tagName.toLowerCase()
                         )
                     )
-                        return NodeFilter.FILTER_ACCEPT;
-                    return NodeFilter.FILTER_SKIP;
+                        return self.NodeFilter.FILTER_ACCEPT;
+                    return self.NodeFilter.FILTER_SKIP;
                 },
             }
         );
@@ -169,12 +166,12 @@ export const renderToString = (
         }[] = [];
         while (walker.nextNode()) {
             const element = walker.currentNode as Element;
-            const definition = customElements.get(
+            const definition = self.customElements.get(
                 element.tagName.toLowerCase()
             );
             if (definition) {
                 // Upgrade the element
-                customElements.upgrade(element);
+                self.customElements.upgrade(element);
                 // Set the serialise options
                 if (element.shadowRoot) {
                     // The element is a Shadow Host
@@ -197,7 +194,8 @@ export const renderToString = (
                     // shadow-including root is a document).
                     // @see https://dom.spec.whatwg.org/#connected
                     // @see https://html.spec.whatwg.org/multipage/custom-elements.html#custom-element-conformance
-                    const doc = document.implementation.createHTMLDocument();
+                    const doc =
+                        self.document.implementation.createHTMLDocument();
                     const fakeElement = new definition();
                     doc.body.appendChild(fakeElement);
                     if (fakeElement.shadowRoot) {
@@ -273,7 +271,7 @@ const patchShadowHostNodesWithInlineStyles = (node: Node): Node => {
         node: Node
     ): void => {
         if (
-            node.nodeType === Node.ELEMENT_NODE &&
+            node.nodeType === self.Node.ELEMENT_NODE &&
             (node as Element).shadowRoot !== null
         ) {
             const shadow = (node as Element).shadowRoot!;
