@@ -132,7 +132,7 @@ const isTemplateCacheEntry = (input: unknown): input is TemplateCacheEntry => {
  *
  * @property substitutions - The substitutions
  */
-export type TemplateResult = Readonly<TemplateCacheEntry> & {
+export type TemplateResult = TemplateCacheEntry & {
     readonly substitutions: ReadonlyArray<unknown>;
 };
 

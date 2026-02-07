@@ -1,8 +1,12 @@
 /**
  * Monkey Patch ShadowRoot.attachShadow from JSDOM while waiting for JSDOM
- * to fix their ShadowRoot implementation
+ * to fix their `ShadowRoot` implementation.
+ *
+ * - patching `clonable`, `delegatesFocus`, and `serializable` options
+ * - patching `adoptedStyleSheets` and `styleSheets`
  *
  * @see https://developer.mozilla.org/en-US/docs/Web/API/Element/attachShadow
+ * @see https://github.com/jsdom/jsdom/blob/main/lib/jsdom/living/nodes/ShadowRoot.webidl
  * @see https://github.com/jsdom/jsdom/
  */
 
@@ -41,7 +45,7 @@ declare global {
         /**
          * @see https://developer.mozilla.org/en-US/docs/Web/API/ShadowRoot/adoptedStyleSheets
          */
-        adoptedStyleSheets: CSSStyleSheet[];
+        adoptedStyleSheets: ReadonlyArray<CSSStyleSheet[]>;
 
         /**
          * @see https://developer.mozilla.org/en-US/docs/Web/API/ShadowRoot/styleSheets
@@ -52,7 +56,8 @@ declare global {
     interface Element extends SerializableElement {}
 
     interface ShadowRoot
-        extends SerializableElement,
+        extends
+            SerializableElement,
             SerializableShadowRoot,
             AdoptedStyleSheetsShadowRoot {}
 }

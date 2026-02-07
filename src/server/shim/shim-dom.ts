@@ -1,6 +1,4 @@
-import { JSDOM } from 'jsdom';
-
-export function applyShim() {
+export async function createShimDom(): Promise<void> {
     if (typeof globalThis.self === 'undefined') {
         // @ts-ignore Gurantee that `self` exist
         (globalThis as Window & typeof globalThis).self = globalThis;
@@ -13,7 +11,12 @@ export function applyShim() {
     /**
      * Patch the `self` variable
      */
-
+    // This require to work as stand-alone import for any Deno environment,
+    // so using npm-import. Dynamic import is to not import JSDOM if the shim
+    // is not needed.
+    // deno-lint-ignore no-import-prefix
+    const module = await import('npm:jsdom@28.0.0');
+    const { JSDOM } = module.default || module;
     const baseHTML = `<!DOCTYPE html><html><head></head><body></body></html>`;
     const { window } = new JSDOM(baseHTML, { pretendToBeVisual: true });
 
@@ -49,13 +52,8 @@ export function applyShim() {
     });
 
     /*
-     * Patches while waiting for JSDOM to add support
+     * Patches while waiting for JSDOM to add support to `attachShadow`'s
      */
-    if (!('attachShadow' in Element.prototype)) {
-        import('./patch/attachShadow.ts');
-    }
-
-    if (!('replaceSync' in CSSStyleSheet.prototype)) {
-        import('./patch/cssStyleSheetPatch.ts');
-    }
+    await import('./patch/attachShadow.ts');
+    await import('./patch/cssStyleSheetPatch.ts');
 }

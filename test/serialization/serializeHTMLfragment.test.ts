@@ -1,7 +1,9 @@
 import { serializeHTMLfragment } from '@src/serialization/serializeHTMLfragment.ts';
 import { assertEquals } from '@std/assert';
 import { afterEach, beforeAll, describe, it } from '@std/testing/bdd';
-import '../../shim.ts';
+import { createShimDom } from '../../shim.ts';
+
+createShimDom();
 
 describe('serializeHTMLfragment', (): void => {
     beforeAll((): void => {

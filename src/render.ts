@@ -1,7 +1,7 @@
 import { isTemplateResult, type TemplateResult } from './html.ts';
 
 type NodeInstance = {
-    parent: Node;
+    readonly parent: Node;
     readonly nodes: Node[];
     readonly parts: Part[];
 };
@@ -9,19 +9,19 @@ type NodeInstance = {
 type Part =
     | {
           readonly type: 'text';
-          lastValue: unknown;
-          nodes: Node[];
+          readonly lastValue: unknown;
+          readonly nodes: Node[];
       }
     | {
           readonly type: 'attr';
           readonly attr: string;
-          node: Element;
+          readonly node: Element;
       }
     | {
           readonly type: 'event';
           readonly event: string;
-          lastEventListener?: EventListener;
-          node: Element;
+          readonly lastEventListener?: EventListener;
+          readonly node: Element;
       };
 
 const nodeInstanceCache = new WeakMap<Node, NodeInstance>();
@@ -143,9 +143,12 @@ const createNodeInstance = (templateResult: TemplateResult): NodeInstance => {
                 if (isTemplateResult(substitution)) {
                     // Append each nested template's nodes to current node's
                     // parent node
-                    const nestedInstance = createNodeInstance(substitution);
+                    let nestedInstance = createNodeInstance(substitution);
                     if (node.parentNode) {
-                        nestedInstance.parent = node.parentNode;
+                        nestedInstance = {
+                            ...nestedInstance,
+                            parent: node.parentNode,
+                        };
                     }
                     const fragment = self.document.createDocumentFragment();
                     nestedInstance.nodes.forEach((nestedNode: Node): void => {
@@ -220,8 +223,10 @@ export const render = (
 ): void => {
     if (!nodeInstanceCache.has(container)) {
         // First time render with substitutions
-        const instance = createNodeInstance(templateResult);
-        instance.parent = container;
+        const instance: NodeInstance = {
+            ...createNodeInstance(templateResult),
+            parent: container,
+        };
         for (const node of instance.nodes) {
             instance.parent.appendChild(node);
         }
@@ -232,7 +237,7 @@ export const render = (
     const { parts } = nodeInstanceCache.get(container)!;
 
     templateResult.partMeta.forEach((meta, index): void => {
-        const part = parts[index];
+        let part = parts[index];
         const substitution =
             templateResult.substitutions[meta.substitutionIndex];
         switch (part.type) {
@@ -257,7 +262,7 @@ export const render = (
                 if (eventListener) {
                     part.node.addEventListener(part.event, eventListener);
                 }
-                part.lastEventListener = eventListener;
+                part = { ...part, lastEventListener: eventListener };
                 break;
             }
 
@@ -292,7 +297,7 @@ export const render = (
                                 fragment,
                                 firstNode
                             );
-                            part.nodes = nestedInstance.nodes;
+                            part = { ...part, nodes: nestedInstance.nodes };
                         }
                     }
                 } else if (Array.isArray(substitution)) {
@@ -302,6 +307,7 @@ export const render = (
                         part.lastValue.length === substitution.length &&
                         substitution.every(
                             (value: unknown, index: number): boolean =>
+                                part.type === 'text' &&
                                 value === (part.lastValue as unknown[])[index]
                         )
                     ) {
@@ -331,14 +337,14 @@ export const render = (
                                 parent.removeChild(oldNode);
                             }
                         }
-                        part.nodes = [...fragment.childNodes];
+                        part = { ...part, nodes: [...fragment.childNodes] };
                     }
                 } else {
                     if (part.nodes && part.nodes[0]) {
                         part.nodes[0].textContent = String(substitution);
                     }
                 }
-                part.lastValue = substitution;
+                part = { ...part, lastValue: substitution };
                 break;
             }
         }
