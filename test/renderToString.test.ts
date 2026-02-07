@@ -1,11 +1,9 @@
-if (typeof self.document === 'undefined') {
-    await import('@src/server/shim/shim-dom.ts');
-}
 import { css } from '@src/css.ts';
 import { html, type TemplateResult } from '@src/html.ts';
 import { renderToString } from '@src/renderToString.ts';
 import { assertEquals } from '@std/assert';
 import { describe, it } from '@std/testing/bdd';
+import '../shim.ts';
 
 describe('renderToString', (): void => {
     it('can handle no substitution', (): void => {

@@ -1,9 +1,7 @@
-if (typeof self.document === 'undefined') {
-    await import('@src/server/shim/shim-dom.ts');
-}
 import { css } from '@src/css.ts';
 import { assertEquals } from '@std/assert';
 import { describe, it } from '@std/testing/bdd';
+import '../shim.ts';
 
 const cssRuleToCssText = (cssRule: CSSRule): string => cssRule.cssText;
 const cssRulesToCssText = (cssRuleList: CSSRuleList): string[] =>
