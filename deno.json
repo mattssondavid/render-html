@@ -3,7 +3,8 @@
         "lib": ["dom", "dom.iterable", "dom.asynciterable", "deno.ns"]
     },
     "exports": {
-        ".": "./mod.ts"
+        ".": "./mod.ts",
+        "./shim": "./shim.ts"
     },
     "fmt": {
         "files": {
@@ -23,7 +24,7 @@
     },
     "tasks": {
         "build": "echo 'Not Implemented'",
-        "test": "deno test --allow-env --allow-write"
+        "test": "deno test --allow-env --allow-read --allow-write"
     },
     "vendor": true
 }

@@ -1,10 +1,10 @@
-if (typeof self.document === 'undefined') {
-    await import('@src/server/shim/shim-dom.ts');
-}
 import { html, type TemplateResult } from '@src/html.ts';
 import { render } from '@src/render.ts';
 import { assertEquals } from '@std/assert';
 import { afterEach, beforeEach, describe, it } from '@std/testing/bdd';
+import { createShimDom } from '../shim.ts';
+
+createShimDom();
 
 describe('render', (): void => {
     let container: HTMLElement;
