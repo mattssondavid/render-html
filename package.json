@@ -1,0 +1,24 @@
+{
+    "name": "render-html",
+    "type": "module",
+    "exports": {
+        ".": {
+            "import": "./node-dist/node.js",
+            "types": "./node-dist/node.d.ts"
+        }
+    },
+    "types": "./node-dist/node.d.ts",
+    "files": [
+        "node-dist"
+    ],
+    "scripts": {
+        "build": "tsc"
+    },
+    "dependencies": {
+        "jsdom": "^28.0.0"
+    },
+    "devDependencies": {
+        "@types/jsdom": "^28.0.0",
+        "typescript": "^5.9.3"
+    }
+}

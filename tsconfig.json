@@ -1,0 +1,17 @@
+{
+    "compilerOptions": {
+        "declaration": true,
+        "emitDeclarationOnly": false,
+        "esModuleInterop": true,
+        "module": "nodenext",
+        "moduleResolution": "nodenext",
+        "outDir": "node-dist",
+        "removeComments": true,
+        "rewriteRelativeImportExtensions": true,
+        "rootDir": ".",
+        "skipLibCheck": true,
+        "strict": true,
+        "target": "esnext"
+    },
+    "include": ["src", "node.ts", "shim.ts"]
+}
