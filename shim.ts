@@ -8,6 +8,12 @@ const { JSDOM } = isDeno
       await import('npm:jsdom@28.0.0')
     : await import('jsdom');
 
-export function createShimDom(): Promise<void> {
-    return shim(JSDOM);
+/**
+ * Create a DOM SHIM
+ *
+ * @param {string[]} [requiredDomAPIs] Additional DOM/Web APIs to patch
+ * @returns {Promise<void>}
+ */
+export function createShimDom(requiredDomAPIs?: string[]): Promise<void> {
+    return shim(JSDOM, requiredDomAPIs);
 }

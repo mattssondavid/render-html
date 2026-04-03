@@ -1,10 +1,14 @@
-// deno-lint-ignore no-explicit-any
-export async function createShimDom(JSDOM: any): Promise<void> {
+export async function createShimDom(
+    // deno-lint-ignore no-explicit-any
+    JSDOM: any,
+    requiredDomAPIs?: string[]
+): Promise<void> {
     if (typeof globalThis.self === 'undefined') {
         // @ts-ignore Gurantee that `self` exist
         (globalThis as Window & typeof globalThis).self = globalThis;
     }
 
+    // @ts-ignore Require that `document` exist
     if (typeof globalThis.document !== 'undefined') {
         return;
     }
@@ -26,7 +30,7 @@ export async function createShimDom(JSDOM: any): Promise<void> {
      * the global, as DOM functionality (and Web APIs) is not commonly included in
      * the Deno (or Node) run environment.
      */
-    const patchedDOMAPIs = [
+    const defaultDOMAPIs = [
         'CSSStyleSheet',
         'customElements',
         'document',
@@ -39,6 +43,9 @@ export async function createShimDom(JSDOM: any): Promise<void> {
         'NodeFilter',
         'ShadowRoot',
     ];
+    const patchedDOMAPIs = requiredDomAPIs
+        ? [...defaultDOMAPIs, ...requiredDomAPIs]
+        : defaultDOMAPIs;
     patchedDOMAPIs.forEach((domApi: string): void => {
         if (!(domApi in self)) {
             Reflect.set(
