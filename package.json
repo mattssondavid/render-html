@@ -5,7 +5,8 @@
         ".": {
             "import": "./node-dist/node.js",
             "types": "./node-dist/node.d.ts"
-        }
+        },
+        "./shim": "./node-dist/shim.js"
     },
     "types": "./node-dist/node.d.ts",
     "files": [
