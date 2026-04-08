@@ -23,7 +23,8 @@
         "@std": "jsr:@std"
     },
     "tasks": {
-        "build": "echo 'Not Implemented'",
+        "build": "deno task build:node",
+        "build:node": "npm run build",
         "test": "deno test --allow-env --allow-read --allow-write"
     },
     "vendor": true

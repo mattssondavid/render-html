@@ -1,9 +1,14 @@
-export async function createShimDom(): Promise<void> {
+export async function createShimDom(
+    // deno-lint-ignore no-explicit-any
+    JSDOM: any,
+    requiredDomAPIs?: string[]
+): Promise<void> {
     if (typeof globalThis.self === 'undefined') {
         // @ts-ignore Gurantee that `self` exist
         (globalThis as Window & typeof globalThis).self = globalThis;
     }
 
+    // @ts-ignore Require that `document` exist
     if (typeof globalThis.document !== 'undefined') {
         return;
     }
@@ -14,9 +19,6 @@ export async function createShimDom(): Promise<void> {
     // This require to work as stand-alone import for any Deno environment,
     // so using npm-import. Dynamic import is to not import JSDOM if the shim
     // is not needed.
-    // deno-lint-ignore no-import-prefix
-    const module = await import('npm:jsdom@28.0.0');
-    const { JSDOM } = module.default || module;
     const baseHTML = `<!DOCTYPE html><html><head></head><body></body></html>`;
     const { window } = new JSDOM(baseHTML, { pretendToBeVisual: true });
 
@@ -28,7 +30,7 @@ export async function createShimDom(): Promise<void> {
      * the global, as DOM functionality (and Web APIs) is not commonly included in
      * the Deno (or Node) run environment.
      */
-    const patchedDOMAPIs = [
+    const defaultDOMAPIs = [
         'CSSStyleSheet',
         'customElements',
         'document',
@@ -41,6 +43,9 @@ export async function createShimDom(): Promise<void> {
         'NodeFilter',
         'ShadowRoot',
     ];
+    const patchedDOMAPIs = requiredDomAPIs
+        ? [...defaultDOMAPIs, ...requiredDomAPIs]
+        : defaultDOMAPIs;
     patchedDOMAPIs.forEach((domApi: string): void => {
         if (!(domApi in self)) {
             Reflect.set(

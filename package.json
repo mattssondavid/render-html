@@ -1,0 +1,28 @@
+{
+    "dependencies": {
+        "jsdom": "^28.0.0"
+    },
+    "devDependencies": {
+        "@types/jsdom": "^28.0.0",
+        "typescript": "^5.9.3"
+    },
+    "exports": {
+        ".": {
+            "import": "./dist-node/node.js",
+            "types": "./dist-node/node.d.ts"
+        },
+        "./shim": {
+            "import": "./dist-node/shim.js",
+            "types": "./dist-node/shim.d.ts"
+        }
+    },
+    "files": [
+        "dist-node"
+    ],
+    "name": "render-html",
+    "scripts": {
+        "build": "tsc"
+    },
+    "type": "module",
+    "types": "./dist-node/node.d.ts"
+}
