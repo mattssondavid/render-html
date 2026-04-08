@@ -5,7 +5,7 @@
         "esModuleInterop": true,
         "module": "nodenext",
         "moduleResolution": "nodenext",
-        "outDir": "node-dist",
+        "outDir": "dist-node",
         "removeComments": true,
         "rewriteRelativeImportExtensions": true,
         "rootDir": ".",

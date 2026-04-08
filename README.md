@@ -6,9 +6,9 @@ _Render HTML efficiently with minimum DOM manipulation either to a specified DOM
 
 The project aims to
 
--   Render HTML efficiently with minimum DOM manipulation;
--   Allow render HTML to DOM container;
--   Allow render HTML to string output;
+- Render HTML efficiently with minimum DOM manipulation;
+- Allow render HTML to DOM container;
+- Allow render HTML to string output;
 
 ## Dependencies
 
@@ -47,13 +47,13 @@ The `renderToString` consumes a `TemplateResult` and renders the template with p
 
 #### Options
 
--   `renderer`: An optional custom renderer to render the `TemplateResult` template node to a string.
+- `renderer`: An optional custom renderer to render the `TemplateResult` template node to a string.
 
     If not specified then the template node is rendered via an implementation of [Serializing HTML fragments](https://html.spec.whatwg.org/multipage/parsing.html#serialising-html-fragments).
 
--   `customElements`: An optional provided custom element registry to use when checking for web component definitions.
+- `customElements`: An optional provided custom element registry to use when checking for web component definitions.
 
--   `serializeShadowRootAdoptedStyleSheets`: An optional setting to, if true, serialize custom element shadow root's adopted stylesheets.
+- `serializeShadowRootAdoptedStyleSheets`: An optional setting to, if true, serialize custom element shadow root's adopted stylesheets.
 
 ## Usage
 
@@ -78,6 +78,23 @@ const template = html`<p>hi</p>`;
 const result = renderToString(template);
 console.log(result); // <p>hi</p>
 ```
+
+## Node
+
+The project aims to be Deno-first, but provides Node compatibility.
+
+### Examples
+
+1. Add `render-html` as a dependency in `package.json`.
+
+2. Import `html` and `renderToString`. If needed, also import `createShimDom`
+
+    Using dynamic module import
+
+    ```js
+    const { html, renderToString } = await import('render-html');
+    const { createShimDom } = await import('render-html/shim');
+    ```
 
 ## License
 

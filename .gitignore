@@ -6,7 +6,6 @@ deno.lock
 vendor
 
 # Node
-node-dist
 
 # NPM
 node_modules
